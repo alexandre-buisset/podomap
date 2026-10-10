@@ -1,0 +1,7 @@
+code_insee,nom,zonage,commentaire
+# Exemple de fichier de zonage manuel si l'ARS publie un arrêté conventionnel spécifique.
+# Valeurs possibles pour 'zonage' : 'tres_sous_dotee', 'sous_dotee', 'intermediaire', 'tres_dotee', 'surdotee'
+# Les zones sous-dotées reçoivent un bonus dans le score d'opportunité.
+# Exemples indicatifs :
+# 93005,Bobigny,sous_dotee,Zone prioritaire ARS
+# 75108,Paris 8e,surdotee,Forte densité constatée
