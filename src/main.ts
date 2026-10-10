@@ -13,6 +13,7 @@ class App {
   private mapReady: boolean = false;
   private currentFilters: FilterSettings = {
     weights: { ...DEFAULT_WEIGHTS },
+    activePreset: 'semelles',
     minPopulation: 5000,
     selectedRadiusKm: 2,
     selectedDepartment: 'all',

@@ -31,8 +31,15 @@ export interface ZoneProperties {
   modes_transport?: string[];
   temps_paris_min?: number;
   score_transport?: number;
+  // Income & Purchasing Power metrics (INSEE Filosofi)
+  revenu_median?: number;
+  taux_imposition?: number;
+  part_prestations_sociales?: number;
+  panier_semelles_estime?: number;
+  potentiel_semelles?: number;
   // Dynamic frontend-computed properties
   score?: number;
+  score_pouvoir_achat?: number;
   score_demande?: number;
   score_concurrence?: number;
   score_diabete?: number;
@@ -77,16 +84,20 @@ export interface PodologuesGeoJSON {
   features: PodologueFeature[];
 }
 
+export type StrategyPreset = 'semelles' | 'equilibre' | 'medical' | 'custom';
+
 export interface ScoreWeights {
-  demande_65plus: number; // default 35
-  concurrence_inv: number; // default 40
-  coef_diabete: number; // default 10
-  bonus_zonage: number; // default 15
-  transport_access?: number; // default 0
+  pouvoir_achat_semelles: number; // default 30 (Revenu disponible & solvabilité semelles)
+  concurrence_inv: number; // default 30 (Faible concurrence podologues)
+  demande_65plus: number; // default 25 (Bassin seniors 65+)
+  transport_access: number; // default 10 (Accessibilité gares & temps Paris)
+  coef_diabete: number; // default 5 (Sur-incidence diabète ALD)
+  bonus_zonage: number; // default 0 (Aides ARS éventuelles)
 }
 
 export interface FilterSettings {
   weights: ScoreWeights;
+  activePreset: StrategyPreset;
   minPopulation: number; // default 5000
   selectedRadiusKm: number; // 1, 2, or 3
   selectedDepartment: string; // 'all' or '75', '92', etc.

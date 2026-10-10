@@ -1,11 +1,33 @@
-import { ZoneFeature, FilterSettings, ScoreWeights } from './types';
+import { ZoneFeature, FilterSettings, ScoreWeights, StrategyPreset } from './types';
 
-export const DEFAULT_WEIGHTS: ScoreWeights = {
-  demande_65plus: 35,
-  concurrence_inv: 40,
-  coef_diabete: 10,
-  bonus_zonage: 15,
+export const STRATEGY_PRESETS: Record<Exclude<StrategyPreset, 'custom'>, ScoreWeights> = {
+  semelles: {
+    pouvoir_achat_semelles: 35,
+    concurrence_inv: 30,
+    demande_65plus: 20,
+    transport_access: 10,
+    coef_diabete: 5,
+    bonus_zonage: 0,
+  },
+  equilibre: {
+    pouvoir_achat_semelles: 25,
+    concurrence_inv: 35,
+    demande_65plus: 25,
+    transport_access: 10,
+    coef_diabete: 5,
+    bonus_zonage: 0,
+  },
+  medical: {
+    pouvoir_achat_semelles: 0,
+    concurrence_inv: 45,
+    demande_65plus: 35,
+    transport_access: 10,
+    coef_diabete: 10,
+    bonus_zonage: 0,
+  },
 };
+
+export const DEFAULT_WEIGHTS: ScoreWeights = STRATEGY_PRESETS.semelles;
 
 export const ZONAGE_SCORES: Record<string, number> = {
   tres_sous_dotee: 100,
@@ -90,24 +112,27 @@ export function computeOpportunityScores(
   );
 
   // 2. Adjust weights: if no zonage data, redistribute zonage weight proportionally
+  let wPouvoirAchat = Math.max(0, weights.pouvoir_achat_semelles || 0);
   let wDemande = Math.max(0, weights.demande_65plus);
   let wConcurrence = Math.max(0, weights.concurrence_inv);
   let wDiabete = Math.max(0, weights.coef_diabete);
   let wZonage = hasZonageData ? Math.max(0, weights.bonus_zonage) : 0;
   let wTransit = Math.max(0, weights.transport_access || 0);
 
-  const baseSum = wDemande + wConcurrence + wDiabete + wTransit;
+  const baseSum = wPouvoirAchat + wDemande + wConcurrence + wDiabete + wTransit;
   if (!hasZonageData && weights.bonus_zonage > 0 && baseSum > 0) {
     const bonusToDistribute = weights.bonus_zonage;
+    wPouvoirAchat += (wPouvoirAchat / baseSum) * bonusToDistribute;
     wDemande += (wDemande / baseSum) * bonusToDistribute;
     wConcurrence += (wConcurrence / baseSum) * bonusToDistribute;
     wDiabete += (wDiabete / baseSum) * bonusToDistribute;
     if (wTransit > 0) wTransit += (wTransit / baseSum) * bonusToDistribute;
   }
 
-  const totalEffectiveWeight = wDemande + wConcurrence + wDiabete + wZonage + wTransit;
+  const totalEffectiveWeight = wPouvoirAchat + wDemande + wConcurrence + wDiabete + wZonage + wTransit;
 
   // 3. Extract active vectors for percentiles
+  const incomeValues = activeIndices.map((idx) => features[idx].properties.potentiel_semelles ?? 50);
   const pop65Values = activeIndices.map((idx) => features[idx].properties.pop_65plus || 0);
   const diabeteValues = activeIndices.map((idx) => features[idx].properties.coef_diabete || 1.0);
   const densityValues = activeIndices.map((idx) => {
@@ -116,6 +141,7 @@ export function computeOpportunityScores(
   });
   const transitValues = activeIndices.map((idx) => features[idx].properties.score_transport ?? 50);
 
+  const pctPouvoirAchat = computePercentiles(incomeValues);
   const pctDemande = computePercentiles(pop65Values);
   const pctDiabete = computePercentiles(diabeteValues);
   // Concurrence is inverted: less density = higher score
@@ -126,6 +152,7 @@ export function computeOpportunityScores(
   // 4. Assign individual criterion percentiles and composite score
   activeIndices.forEach((featIdx, i) => {
     const feat = features[featIdx];
+    const pPouvoirAchat = pctPouvoirAchat[i];
     const pDemande = pctDemande[i];
     const pConcurrence = pctConcurrenceInv[i];
     const pDiabete = pctDiabete[i];
@@ -136,7 +163,8 @@ export function computeOpportunityScores(
     let composite = 0;
     if (totalEffectiveWeight > 0) {
       composite =
-        (wDemande * pDemande +
+        (wPouvoirAchat * pPouvoirAchat +
+          wDemande * pDemande +
           wConcurrence * pConcurrence +
           wDiabete * pDiabete +
           wZonage * pZonage +
@@ -146,6 +174,7 @@ export function computeOpportunityScores(
 
     feat.properties.is_excluded = false;
     feat.properties.score = Math.max(0, Math.min(100, Math.round(composite * 10) / 10));
+    feat.properties.score_pouvoir_achat = pPouvoirAchat;
     feat.properties.score_demande = pDemande;
     feat.properties.score_concurrence = pConcurrence;
     feat.properties.score_diabete = pDiabete;

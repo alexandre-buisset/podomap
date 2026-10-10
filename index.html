@@ -148,6 +148,28 @@
 
         <!-- Tab 1: Paramètres / Sliders & Filtres -->
         <section id="panel-controls" class="tab-panel active">
+          <!-- Strategy Presets (Profils d'Installation) -->
+          <div class="control-group preset-group">
+            <div class="control-header">
+              <label class="control-title">Profil Stratégique d'Installation</label>
+              <span id="active-preset-badge" class="control-value-pill preset-active-pill">💎 Semelles</span>
+            </div>
+            <div id="strategy-preset-group" class="pill-group preset-pill-group">
+              <button class="pill-btn preset-btn active" data-preset="semelles">
+                💎 Semelles & Pouvoir d'Achat
+              </button>
+              <button class="pill-btn preset-btn" data-preset="equilibre">
+                ⚖️ Équilibré
+              </button>
+              <button class="pill-btn preset-btn" data-preset="medical">
+                🩺 Médical & Diabète
+              </button>
+            </div>
+            <p id="preset-description" class="control-hint">
+              <strong>💎 Semelles & Pouvoir d'Achat (Rentabilité) :</strong> Valorise les communes à haut revenu disponible (INSEE Filosofi) où le reste à charge des semelles (140€-210€) et dépassements d'honoraires sont absorbés par les mutuelles premium.
+            </p>
+          </div>
+
           <!-- Department Filter -->
           <div class="control-group">
             <label class="control-title">Département</label>
@@ -182,19 +204,20 @@
           <div class="control-group">
             <div class="control-header">
               <label class="control-title">Pondération du Score (100%)</label>
-              <button id="btn-reset-weights" class="btn-text" title="Réinitialiser les poids par défaut">Par défaut</button>
+              <button id="btn-reset-weights" class="btn-text" title="Réinitialiser selon le profil actif">Par défaut</button>
             </div>
 
-            <!-- Slider 1: Demande 65+ -->
+            <!-- Slider 1: Pouvoir d'achat & Semelles -->
             <div class="slider-item">
               <div class="slider-label-row">
                 <span class="slider-name">
-                  <span class="dot-indicator dot-blue"></span>
-                  Demande Seniors (65 ans +)
+                  <span class="dot-indicator dot-gold"></span>
+                  Pouvoir d'Achat & Semelles (INSEE)
                 </span>
-                <span id="val-demande" class="slider-val">35 %</span>
+                <span id="val-pouvoir-achat" class="slider-val">35 %</span>
               </div>
-              <input type="range" id="slider-demande" min="0" max="100" step="5" value="35" class="slider-input" />
+              <input type="range" id="slider-pouvoir-achat" min="0" max="100" step="5" value="35" class="slider-input" />
+              <p class="slider-subtext">Revenu médian & ménages imposés : solvabilité pour orthèses 130-210€ et mutuelles.</p>
             </div>
 
             <!-- Slider 2: Concurrence inversée -->
@@ -204,35 +227,59 @@
                   <span class="dot-indicator dot-purple"></span>
                   Concurrence faible (Densité inversée)
                 </span>
-                <span id="val-concurrence" class="slider-val">40 %</span>
+                <span id="val-concurrence" class="slider-val">30 %</span>
               </div>
-              <input type="range" id="slider-concurrence" min="0" max="100" step="5" value="40" class="slider-input" />
+              <input type="range" id="slider-concurrence" min="0" max="100" step="5" value="30" class="slider-input" />
             </div>
 
-            <!-- Slider 3: Diabète -->
+            <!-- Slider 3: Demande 65+ -->
+            <div class="slider-item">
+              <div class="slider-label-row">
+                <span class="slider-name">
+                  <span class="dot-indicator dot-blue"></span>
+                  Demande Seniors (65 ans +)
+                </span>
+                <span id="val-demande" class="slider-val">20 %</span>
+              </div>
+              <input type="range" id="slider-demande" min="0" max="100" step="5" value="20" class="slider-input" />
+            </div>
+
+            <!-- Slider 4: Accès Transports -->
+            <div class="slider-item">
+              <div class="slider-label-row">
+                <span class="slider-name">
+                  <span class="dot-indicator dot-cyan"></span>
+                  Accès Transports & Gares (IDFM)
+                </span>
+                <span id="val-transports" class="slider-val">10 %</span>
+              </div>
+              <input type="range" id="slider-transports" min="0" max="100" step="5" value="10" class="slider-input" />
+            </div>
+
+            <!-- Slider 5: Diabète -->
             <div class="slider-item">
               <div class="slider-label-row">
                 <span class="slider-name">
                   <span class="dot-indicator dot-amber"></span>
-                  Besoin Diabète (Assurance Maladie)
+                  Besoin Diabète ALD (Ameli)
                 </span>
-                <span id="val-diabete" class="slider-val">10 %</span>
+                <span id="val-diabete" class="slider-val">5 %</span>
               </div>
-              <input type="range" id="slider-diabete" min="0" max="100" step="5" value="10" class="slider-input" />
+              <input type="range" id="slider-diabete" min="0" max="100" step="5" value="5" class="slider-input" />
             </div>
 
-            <!-- Slider 4: Zonage ARS -->
+            <!-- Slider 6: Zonage ARS -->
             <div class="slider-item">
               <div class="slider-label-row">
                 <span class="slider-name">
                   <span class="dot-indicator dot-emerald"></span>
                   Bonus Zonage ARS (Aides)
                 </span>
-                <span id="val-zonage" class="slider-val">15 %</span>
+                <span id="val-zonage" class="slider-val">0 %</span>
               </div>
-              <input type="range" id="slider-zonage" min="0" max="100" step="5" value="15" class="slider-input" />
-              <div id="zonage-redistrib-note" class="zonage-notice">
-                ℹ️ Zonage spécifique non publié en open data : ces 15% sont automatiquement redistribués sur les 3 critères.
+              <input type="range" id="slider-zonage" min="0" max="100" step="5" value="0" class="slider-input" />
+              <div id="zonage-redistrib-note" class="zonage-notice hidden">
+                ℹ️ Zonage spécifique redistribué automatiquement.
               </div>
             </div>
           </div>
@@ -344,21 +391,21 @@
 
             <!-- Score Criteria Breakdown -->
             <div class="sheet-section">
-              <h4 class="section-title">Décomposition du Score (Percentiles)</h4>
+              <h4 class="section-title">Décomposition du Score (Percentiles & Poids)</h4>
               
               <div class="breakdown-item">
                 <div class="breakdown-meta">
-                  <span>Demande Seniors (65+)</span>
-                  <span id="bar-val-demande" class="breakdown-score">-</span>
+                  <span>💎 Pouvoir d'Achat & Semelles</span>
+                  <span id="bar-val-pouvoir-achat" class="breakdown-score">-</span>
                 </div>
                 <div class="bar-track">
-                  <div id="bar-fill-demande" class="bar-fill fill-blue" style="width: 0%"></div>
+                  <div id="bar-fill-pouvoir-achat" class="bar-fill fill-gold" style="width: 0%"></div>
                 </div>
               </div>
 
               <div class="breakdown-item">
                 <div class="breakdown-meta">
-                  <span>Concurrence Faible (Inversée)</span>
+                  <span>🛡️ Concurrence Faible (Inversée)</span>
                   <span id="bar-val-concurrence" class="breakdown-score">-</span>
                 </div>
                 <div class="bar-track">
@@ -368,13 +415,61 @@
 
               <div class="breakdown-item">
                 <div class="breakdown-meta">
-                  <span>Besoin Diabète (Département)</span>
+                  <span>👥 Demande Seniors (65+)</span>
+                  <span id="bar-val-demande" class="breakdown-score">-</span>
+                </div>
+                <div class="bar-track">
+                  <div id="bar-fill-demande" class="bar-fill fill-blue" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div class="breakdown-item">
+                <div class="breakdown-meta">
+                  <span>🚆 Dessertes Transports (IDFM)</span>
+                  <span id="bar-val-transit" class="breakdown-score">-</span>
+                </div>
+                <div class="bar-track">
+                  <div id="bar-fill-transit" class="bar-fill fill-cyan" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div class="breakdown-item">
+                <div class="breakdown-meta">
+                  <span>🩺 Besoin Diabète (Département)</span>
                   <span id="bar-val-diabete" class="breakdown-score">-</span>
                 </div>
                 <div class="bar-track">
                   <div id="bar-fill-diabete" class="bar-fill fill-amber" style="width: 0%"></div>
                 </div>
               </div>
+            </div>
+
+            <!-- Economic Potential & Insole Pricing Card -->
+            <div class="sheet-section">
+              <h4 class="section-title">💼 Potentiel Semelles & Pouvoir d'Achat (INSEE Filosofi)</h4>
+              <div class="income-card">
+                <div class="income-stat-row">
+                  <span class="income-label">Revenu disponible médian</span>
+                  <span id="m-income-median" class="income-strong">-</span>
+                </div>
+                <div class="income-stat-row">
+                  <span class="income-label">Estimation Panier Bilan + Semelles</span>
+                  <span id="m-income-semelles-price" class="income-val-highlight">-</span>
+                </div>
+                <div class="income-stat-row">
+                  <span class="income-label">Foyers imposés (Mutuelles supérieures)</span>
+                  <span id="m-income-tax-rate" class="income-text">-</span>
+                </div>
+                <div class="income-stat-row">
+                  <span class="income-label">Part des aides & prestations sociales</span>
+                  <span id="m-income-social-share" class="income-text">-</span>
+                </div>
+                <div id="m-income-verdict" class="income-verdict-box">
+                  -
+                </div>
+              </div>
+            </div>
+
             <!-- Public Transit Accessibility Section -->
             <div class="sheet-section">
               <h4 class="section-title">🚆 Dessertes & Transports (IDFM)</h4>
@@ -436,6 +531,14 @@
                     <td id="m-diabete-prev" class="metric-val">-</td>
                   </tr>
                   <tr>
+                    <td>Revenu disponible médian (INSEE)</td>
+                    <td id="m-pop-revenu" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Tarif estimé bilan + semelles</td>
+                    <td id="m-podo-semelles-tarif" class="metric-val highlight">-</td>
+                  </tr>
+                  <tr>
                     <td>Zonage conventionnel</td>
                     <td id="m-zonage-status" class="metric-val">-</td>
                   </tr>
@@ -467,23 +570,29 @@
             Ce score d'opportunité est un indicateur statistique purement comparatif conçu pour assister une professionnelle de santé dans sa réflexion. Il ne constitue en aucun cas une garantie de patientèle, de chiffre d'affaires ou de viabilité financière. Une étude de terrain (visite des locaux, rencontre des médecins généralistes et structures médico-sociales locales) demeure indispensable.
           </div>
 
-          <h3>1. Calcul du Score d'Opportunité (0 à 100)</h3>
+          <h3>1. Modèle Économique & Pourquoi Remettre en Question le « Pur Désert Médical »</h3>
           <p>
-            Le score est calculé <strong>en temps réel côté navigateur</strong> pour assurer une réactivité instantanée des curseurs. Chaque critère est normalisé sous forme de <strong>rang en percentile (0 à 100)</strong> sur l'ensemble des zones éligibles (communes dont la population est supérieure au seuil minimal fixé) :
+            En podologie libérale, la rentabilité et la pérennité d'un cabinet reposent très largement sur les <strong>semelles orthopédiques / bilans posturaux</strong> (facturés 130 € à 210 € la paire selon le secteur), où les praticiens disposent d'honoraires libres.
+            Le tarif de remboursement de la Sécurité Sociale étant dérisoire (environ 28,86 €), le <strong>reste à charge (100 € à 180 €)</strong> est supporté soit par les mutuelles supérieures (cadres, entreprises), soit directement par les patients.
           </p>
+          <div class="alert-box alert-info">
+            <strong>💡 Le piège du classement par pure pénurie :</strong><br />
+            Un algorithme focalisé uniquement sur le faible ratio de podologues et le diabète ALD propulse mécaniquement en tête des communes très précarisées (taux de pauvreté 25-35%, revenu médian &lt; 16 000 €). Or, dans ces zones, les soins diabétiques conventionnés sont strictement plafonnés par l'Assurance Maladie (environ 27 € la séance pour 4 à 6 séances/an), et les patients sous Complémentaire Santé Solidaire (CSS/CMU) ne commandent quasiment pas de semelles. Un cabinet privé peine à y rentabiliser ses charges sans subvention publique.
+          </div>
+
+          <h3>2. Les 3 Profils Stratégiques d'Installation</h3>
           <ul>
-            <li><strong>Demande Seniors (65 ans et plus) :</strong> Plus le volume absolu de seniors est élevé, plus le percentile de demande augmente.</li>
-            <li><strong>Concurrence inversée :</strong> Mesure le nombre de cabinets de podologie dans le rayon d'influence par rapport à la population senior accessible. Moins il y a de praticiens par rapport aux seniors, plus l'opportunité est forte (percentile inversé).</li>
-            <li><strong>Besoin Diabète :</strong> Taux de prévalence de la pathologie diabétique par département issu de la Cartographie des Pathologies de l'Assurance Maladie.</li>
-            <li><strong>Zonage conventionnel :</strong> Bonus accordé aux zones sous-dotées reconnues. En l'absence d'arrêté spécifique en open data, son poids est redistribué proportionnellement.</li>
+            <li><strong>💎 Semelles & Pouvoir d'Achat (Rentabilité Max) :</strong> Priorise les communes à fort revenu médian (INSEE Filosofi), faible taux de pauvreté et accès transports, où le panier semelles (170€ - 210€) est facilement absorbé par les mutuelles des patients. Fait ressortir les pépites sous-dotées des Hauts-de-Seine (92), Yvelines (78), Val-de-Marne résidentiel (94) et arrondissements parisiens.</li>
+            <li><strong>⚖️ Équilibré (Recommandé) :</strong> Combine à parts égales rentabilité (semelles & pouvoir d'achat) et besoin de santé publique (bassin seniors et concurrence locale).</li>
+            <li><strong>🩺 Médical & Diabète (Soins Conventionnés) :</strong> Modèle axé sur les déserts médicaux stricts, les soins de pédicurie diabétiques pris en charge à 100% et les zones éligibles aux aides publiques d'installation.</li>
           </ul>
 
-          <h3>2. Respect du RGPD & Éthique des données</h3>
+          <h3>3. Respect du RGPD & Éthique des données</h3>
           <p>
             Bien que le Répertoire Partagé des Professionnels intervenant dans le système de Santé (RPPS) soit public, aucun nom, prénom ni donnée de contact personnelle n'est stocké dans cette application ni affiché sur la carte. Seuls les emplacements géographiques anonymisés des cabinets sont représentés.
           </p>
 
-          <h3>3. Sources Ouvertes et Licences</h3>
+          <h3>4. Sources Ouvertes et Licences</h3>
           <table class="sources-table">
             <thead>
               <tr>
@@ -494,9 +603,19 @@
             </thead>
             <tbody>
               <tr>
+                <td>Revenus & Pouvoir d'achat</td>
+                <td>Dispositif Filosofi communal 2021 (Revenus disponibles & pauvreté)</td>
+                <td>INSEE (Licence Ouverte)</td>
+              </tr>
+              <tr>
                 <td>Praticiens podologues</td>
                 <td>RPPS - Annuaire Santé (Extraction publique 2026)</td>
                 <td>Agence du Numérique en Santé (Licence Ouverte 2.0)</td>
+              </tr>
+              <tr>
+                <td>Transports & Gares</td>
+                <td>Réseau ferré & Référentiel des arrêts IDFM 2026</td>
+                <td>Île-de-France Mobilités (Licence ODbL)</td>
               </tr>
               <tr>
                 <td>Géocodage des adresses</td>
@@ -515,12 +634,12 @@
               </tr>
               <tr>
                 <td>Prévalence diabète</td>
-                <td>Cartographie des pathologies 2023</td>
-                <td>Caisse Nationale de l'Assurance Maladie (data.ameli.fr)</td>
+                <td>Cartographie des Pathologies et Dépenses (2023)</td>
+                <td>Caisse Nationale d'Assurance Maladie (Open Data)</td>
               </tr>
               <tr>
-                <td>Fonds de carte</td>
-                <td>Tuiles vectorielles OpenFreeMap</td>
+                <td>Fonds de carte & Rues</td>
+                <td>Tuiles OpenStreetMap & Tuiles Standard</td>
                 <td>OpenStreetMap Contributors (ODbL)</td>
               </tr>
             </tbody>

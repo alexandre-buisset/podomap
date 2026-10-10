@@ -104,3 +104,32 @@ Ce document consigne les choix structurants, techniques et fonctionnels opérés
     - Temps de trajet estimé vers le centre de Paris (Châtelet) en combinant distance d'accès et vitesse commerciale par mode ferroviaire.
   - Ajout d'un affichage cartographique interactif avec popups et de filtres d'accessibilité (temps max vers Paris, gare obligatoire).
 
+---
+
+## 11. Modèle Économique des Semelles & Refonte par Profils Stratégiques (INSEE Filosofi)
+* **Contexte et Remise en Cause Légitime :**
+  L'algorithme initial de pur déficit de soignants classait la Seine-Saint-Denis (93) en tête (Saint-Denis #1, Aulnay-sous-Bois #2, Bobigny, Drancy...) en raison d'un très faible ratio de praticiens et d'un taux élevé de diabète ALD (7,61%).
+  **Dans la réalité économique d'un cabinet de pédicurie-podologie libéral :**
+  1. **Les soins de pédicurie diabétiques conventionnés** sont strictement plafonnés par l'Assurance Maladie à un tarif modeste (~27 € la séance, code POD, limité à 4 ou 6 séances par an).
+  2. **Le coeur de marge et de chiffre d'affaires d'un cabinet repose sur les semelles orthopédiques / orthèses plantaires et bilans posturaux** (facturés 130 € à 210 € la paire selon le secteur).
+  3. Le tarif de remboursement de base de la Sécurité Sociale pour une paire d'orthèses étant dérisoire (~28,86 €), le **reste à charge (100 € à 180 €)** doit obligatoirement être absorbé par des mutuelles complémentaires de qualité supérieure (cadres, professions libérales, mutuelles d'entreprises) ou par l'épargne personnelle du patient.
+  4. Dans les communes à forte précarité (taux de pauvreté 25-35%, revenu médian < 16 000 €, fort taux de CSS/CMU), les patients renoncent très largement aux semelles orthopédiques à honoraires libres. Un cabinet privé y est contraint à un volume élevé d'actes conventionnés à faible marge, avec un risque élevé d'impayés et de rendez-vous manqués.
+  5. Inversement, les communes résidentielles et aisées (Hauts-de-Seine 92, Yvelines 78, Val-de-Marne résidentiel 94, Paris Ouest/Sud/Centre) concentrent des patients sportifs, des familles et des seniors à fort pouvoir d'achat renouvelant chaque année leurs semelles sans hésiter.
+
+* **Décisions prises :**
+  1. **Intégration d'INSEE Filosofi 2021 :**
+     Extraction du revenu disponible médian (`revenu_median` en €/an), du taux de ménages fiscaux imposés (`taux_imposition` en %) et de la part des prestations sociales pour l'ensemble des 1 285 communes et arrondissements d'Île-de-France (100% de correspondance).
+  2. **Estimation du panier moyen semelles (`panier_semelles_estime`) :**
+     Modélisation du tarif praticable pour un bilan podologique + paire d'orthèses de 130 € (communes très modestes) à 210 € (communes aisées).
+  3. **Création de 3 Profils Stratégiques d'Installation sélectionnables en 1 clic :**
+     - **💎 Profil 1 : Semelles & Pouvoir d'Achat (Rentabilité Max - Défaut) :**
+       *Pondération :* 35% Pouvoir d'achat / Semelles, 30% Faible concurrence, 20% Seniors 65+, 10% Transports, 5% Diabète.
+       *Résultat :* Fait émerger les véritables pépites rentables sous-dotées d'Île-de-France : **Vincennes (94) #1**, **Saint-Germain-en-Laye (78) #2**, **Nogent-sur-Marne (94) #3**, **Houilles (78) #4**, **Versailles (78) #5**, **Le Vésinet (78) #6**, **Charenton (94) #7**, **Levallois (92) #8**, **Le Plessis-Robinson (92) #9**, **Rueil-Malmaison (92) #10**.
+     - **⚖️ Profil 2 : Équilibré (Recommandé) :**
+       *Pondération :* 25% Pouvoir d'achat / Semelles, 35% Faible concurrence, 25% Seniors 65+, 10% Transports, 5% Diabète.
+     - **🩺 Profil 3 : Médical & Diabète (Soins Conventionnés) :**
+       *Pondération :* 45% Faible concurrence, 35% Seniors, 10% Diabète, 10% Transports, 0% Pouvoir d'achat.
+       *Résultat :* Restitue l'analyse de pur désert médical conventionné (Saint-Denis #1, Argenteuil #2, Aulnay-sous-Bois #3).
+  4. **Fiche détaillée enrichie :**
+     Affichage d'une carte dédiée au pouvoir d'achat, au tarif estimé des semelles et d'un diagnostic d'opportunité économique transparent.
+

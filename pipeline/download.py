@@ -8,6 +8,7 @@ from pipeline.config import (
     RPPS_ZIP_URL,
     INSEE_POP_ZIP_URL,
     PARIS_ARRONDISSEMENTS_GEOJSON_URL,
+    FILOSOFI_INCOME_CSV_URL,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -44,10 +45,16 @@ def download_all_raw(force: bool = False) -> dict:
         RAW_DIR / "paris_arrondissements.geojson",
         force=force,
     )
+    income_path = download_file(
+        FILOSOFI_INCOME_CSV_URL,
+        RAW_DIR / "revenu_communes.csv",
+        force=force,
+    )
     return {
         "rpps": rpps_path,
         "insee": insee_path,
         "paris": paris_path,
+        "income": income_path,
     }
 
 

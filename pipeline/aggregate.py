@@ -17,6 +17,7 @@ from pipeline.config import (
 from pipeline.diabetes import get_diabetes_coefficients
 from pipeline.geo import get_all_zones_features, haversine_distance_km
 from pipeline.transport import enrich_zones_with_transit, process_stations, process_lines
+from pipeline.income import get_communal_income_lookup
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -110,7 +111,10 @@ def build_and_export_data(
     # 5. Manual zonage
     manual_zonage = load_manual_zonage()
 
-    # 6. Build lookup of centroids for spatial radius calculation
+    # 6. Income & purchasing power metrics (INSEE Filosofi)
+    income_lookup = get_communal_income_lookup()
+
+    # 7. Build lookup of centroids for spatial radius calculation
     zone_centroids = []
     for feat in zone_features:
         props = feat["properties"]
@@ -182,6 +186,20 @@ def build_and_export_data(
         # Zonage
         props["zonage"] = manual_zonage.get(code, "")
 
+        # Income & purchasing power metrics (INSEE Filosofi 2021)
+        inc_data = income_lookup.get(code, {
+            "revenu_median": 27200,
+            "taux_imposition": 58.0,
+            "part_prestations_sociales": 5.0,
+            "panier_semelles_estime": 170,
+            "potentiel_semelles": 50.0,
+        })
+        props["revenu_median"] = inc_data["revenu_median"]
+        props["taux_imposition"] = inc_data["taux_imposition"]
+        props["part_prestations_sociales"] = inc_data["part_prestations_sociales"]
+        props["panier_semelles_estime"] = inc_data["panier_semelles_estime"]
+        props["potentiel_semelles"] = inc_data["potentiel_semelles"]
+
         enriched_features.append({
             "type": "Feature",
             "properties": props,
@@ -238,7 +256,9 @@ def build_and_export_data(
             "rpps": "ANS - Annuaire Santé 2026",
             "ban": "Base Adresse Nationale / API Adresse",
             "insee": "Recensement Insee 2021",
+            "filosofi": "INSEE Filosofi 2021 (Revenus disponibles et pauvreté communaux)",
             "ameli": "Assurance Maladie - Cartographie des pathologies 2023",
+            "idfm": "Île-de-France Mobilités - Réseau ferré et stations 2026",
             "contours": "geo.api.gouv.fr & Open Data Ville de Paris",
         },
     }

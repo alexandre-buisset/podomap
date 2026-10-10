@@ -27,6 +27,7 @@ INSEE_POP_ZIP_URL = "https://www.insee.fr/fr/statistiques/fichier/8268806/base-i
 PARIS_ARRONDISSEMENTS_GEOJSON_URL = "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/arrondissements/exports/geojson"
 AMELI_EFFECTIFS_API_URL = "https://data.ameli.fr/api/explore/v2.1/catalog/datasets/effectifs/records"
 API_ADRESSE_CSV_URL = "https://api-adresse.data.gouv.fr/search/csv/"
+FILOSOFI_INCOME_CSV_URL = "https://static.data.gouv.fr/resources/revenu-des-francais-a-la-commune/20251210-134014/revenu-des-francais-a-la-commune-1765372688826.csv"
 
 # Geocoding thresholds
 MIN_GEOCODE_SCORE = 0.50

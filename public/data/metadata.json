@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T12:33:48.688855+00:00",
+  "generated_at": "2026-10-10T12:54:43.959880+00:00",
   "departments": [
     "75",
     "77",
@@ -26,7 +26,9 @@
     "rpps": "ANS - Annuaire Santé 2026",
     "ban": "Base Adresse Nationale / API Adresse",
     "insee": "Recensement Insee 2021",
+    "filosofi": "INSEE Filosofi 2021 (Revenus disponibles et pauvreté communaux)",
     "ameli": "Assurance Maladie - Cartographie des pathologies 2023",
+    "idfm": "Île-de-France Mobilités - Réseau ferré et stations 2026",
     "contours": "geo.api.gouv.fr & Open Data Ville de Paris"
   }
 }

@@ -118,3 +118,20 @@ Ce document recense l'ensemble des sources ouvertes utilisées, leur URL officie
 * **Tuiles cartographiques :** `https://tile.openstreetmap.org/{z}/{x}/{y}.png`
 * **Licence :** ODbL (Open Database License)
 * **API Key :** Aucune clé d'API requise, 100% ouvert et gratuit.
+
+---
+
+## 9. Revenus, Fiscalité et Pouvoir d'Achat – INSEE Filosofi
+* **Producteur :** Institut National de la Statistique et des Études Économiques (INSEE) / DGFiP
+* **Plateforme :** data.gouv.fr / insee.fr
+* **Jeu de données :** *Revenus des Français à la commune – Dispositif Filosofi (Fichier Localisé Social et Fiscal)*
+* **URL ressource :** `https://static.data.gouv.fr/resources/revenu-des-francais-a-la-commune/20251210-134014/revenu-des-francais-a-la-commune-1765372688826.csv`
+* **Licence :** Licence Ouverte (Etalab)
+* **Colonnes exploitées :**
+  - `Code géographique` : Code INSEE de la commune (incluant 75101 à 75120)
+  - `[DISP] Médiane (€)` : Revenu disponible médian annuel par unité de consommation
+  - `[DEC] Part des ménages fiscaux imposés (%)` : Taux de foyers imposables (proxy de mutuelles de bon niveau et d'absence de précarité)
+  - `[DISP] Part de l'ensemble des prestations sociales (%)` : Taux d'aides sociales (indicateur de fragilité économique)
+* **Indicateurs dérivés pour la podologie :**
+  - `panier_semelles_estime` : Estimation du tarif moyen praticable pour un bilan postural + semelles orthopédiques (de 130 € à 210 €).
+  - `potentiel_semelles` : Score synthétique (0 à 100) combinant revenu médian et taux de foyers imposés.
