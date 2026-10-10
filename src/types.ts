@@ -48,6 +48,9 @@ export interface ZoneProperties {
   concurrence_niveau?: 'tres_faible' | 'faible' | 'moderee' | 'elevee' | 'saturee';
   concurrence_label?: string;
   concurrence_color?: string;
+  ratio_hab_par_podo?: number;
+  ratio_hab_label?: string;
+  ratio_hab_color?: string;
   pouvoir_achat_label?: string;
   is_excluded?: boolean;
   rank_global?: number;

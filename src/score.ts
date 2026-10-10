@@ -3,25 +3,25 @@ import { ZoneFeature, FilterSettings, ScoreWeights, StrategyPreset } from './typ
 export const STRATEGY_PRESETS: Record<Exclude<StrategyPreset, 'custom'>, ScoreWeights> = {
   semelles: {
     pouvoir_achat_semelles: 35,
-    concurrence_inv: 30,
-    demande_65plus: 20,
-    transport_access: 10,
-    coef_diabete: 5,
+    concurrence_inv: 45,
+    demande_65plus: 15,
+    transport_access: 5,
+    coef_diabete: 0,
     bonus_zonage: 0,
   },
   equilibre: {
     pouvoir_achat_semelles: 25,
-    concurrence_inv: 35,
-    demande_65plus: 25,
-    transport_access: 10,
-    coef_diabete: 5,
+    concurrence_inv: 50,
+    demande_65plus: 20,
+    transport_access: 5,
+    coef_diabete: 0,
     bonus_zonage: 0,
   },
   medical: {
     pouvoir_achat_semelles: 0,
-    concurrence_inv: 45,
-    demande_65plus: 35,
-    transport_access: 10,
+    concurrence_inv: 55,
+    demande_65plus: 30,
+    transport_access: 5,
     coef_diabete: 10,
     bonus_zonage: 0,
   },
@@ -76,7 +76,7 @@ export function computeOpportunityScores(
   filters: FilterSettings
 ): ZoneFeature[] {
   const { weights, minPopulation, selectedRadiusKm } = filters;
-  const radiusKey = `densite_10k_65plus_${selectedRadiusKm}km` as const;
+  const podoRadiusKey = `nb_podologues_${selectedRadiusKm}km` as const;
 
   // 1. Identify active (non-excluded) features
   const activeIndices: number[] = [];
@@ -137,7 +137,9 @@ export function computeOpportunityScores(
   const diabeteValues = activeIndices.map((idx) => features[idx].properties.coef_diabete || 1.0);
   const densityValues = activeIndices.map((idx) => {
     const p = features[idx].properties as any;
-    return typeof p[radiusKey] === 'number' ? p[radiusKey] : p.densite_pour_10k_65plus || 0;
+    const podos = typeof p[podoRadiusKey] === 'number' ? p[podoRadiusKey] : p.nb_podologues_rayon || 0;
+    const pop = Math.max(1, p.pop_totale || 1);
+    return (podos / pop) * 10000.0;
   });
   const transitValues = activeIndices.map((idx) => features[idx].properties.score_transport ?? 50);
 
@@ -160,6 +162,67 @@ export function computeOpportunityScores(
     const zCode = (feat.properties.zonage || '').toLowerCase().trim();
     const pZonage = ZONAGE_SCORES[zCode] ?? 0;
 
+    const podosInRadius = typeof (feat.properties as any)[podoRadiusKey] === 'number'
+      ? (feat.properties as any)[podoRadiusKey]
+      : feat.properties.nb_podologues_rayon || 0;
+    const popCommune = feat.properties.pop_totale || 1;
+    const podosCommune = feat.properties.nb_podologues || 0;
+
+    // Métier Ratio: 1 podologue pour X habitants (idéal 1 pour 2 500 à 3 000 hab cité par la podologue)
+    let ratioHabPodo = 0;
+    if (podosCommune === 0) {
+      ratioHabPodo = popCommune;
+      if (podosInRadius === 0) {
+        feat.properties.ratio_hab_label = `🛡️ Désert total (0 podo. pour ${popCommune.toLocaleString('fr-FR')} hab.)`;
+        feat.properties.ratio_hab_color = '#10b981';
+      } else if (podosInRadius <= 3) {
+        feat.properties.ratio_hab_label = `🛡️ 0 cabinet local (${podosInRadius} confrère${podosInRadius > 1 ? 's' : ''} à ${selectedRadiusKm}km)`;
+        feat.properties.ratio_hab_color = '#10b981';
+      } else {
+        feat.properties.ratio_hab_label = `🟡 0 cabinet communal (${podosInRadius} à ${selectedRadiusKm}km)`;
+        feat.properties.ratio_hab_color = '#0284c7';
+      }
+    } else {
+      ratioHabPodo = Math.round(popCommune / podosCommune);
+      if (podosInRadius >= 20) {
+        feat.properties.ratio_hab_label = `⚠️ Environs saturés (${podosInRadius} podos à ${selectedRadiusKm}km)`;
+        feat.properties.ratio_hab_color = '#ef4444';
+      } else if (ratioHabPodo >= 3000) {
+        feat.properties.ratio_hab_label = `🟢 Très favorable (1 pour ${ratioHabPodo.toLocaleString('fr-FR')} hab.)`;
+        feat.properties.ratio_hab_color = '#10b981';
+      } else if (ratioHabPodo >= 2500) {
+        feat.properties.ratio_hab_label = `⚖️ Favorable (1 pour ${ratioHabPodo.toLocaleString('fr-FR')} hab.)`;
+        feat.properties.ratio_hab_color = '#0d9488';
+      } else if (ratioHabPodo >= 1800) {
+        feat.properties.ratio_hab_label = `🟡 Modéré (1 pour ${ratioHabPodo.toLocaleString('fr-FR')} hab.)`;
+        feat.properties.ratio_hab_color = '#0284c7';
+      } else {
+        feat.properties.ratio_hab_label = `🔴 Saturé (1 pour ${ratioHabPodo.toLocaleString('fr-FR')} hab.)`;
+        feat.properties.ratio_hab_color = '#ef4444';
+      }
+    }
+    feat.properties.ratio_hab_par_podo = ratioHabPodo;
+
+    // Saturation Penalty / Gatekeeper:
+    // Évite formellement l'anomalie où des villes saturées (comme Vincennes avec 55 podologues ou Levallois avec 97)
+    // apparaissaient en vert / top opportunité uniquement grâce à leur revenu élevé !
+    let saturationMultiplier = 1.0;
+    if (podosInRadius >= 40) {
+      saturationMultiplier = 0.25; // Saturation extrême (Vincennes 55 podos, Levallois 97 podos)
+    } else if (podosInRadius >= 20) {
+      saturationMultiplier = 0.45; // Forte saturation (Nogent 26 podos, Saint-Maur 32 podos)
+    } else if (podosInRadius >= 12) {
+      saturationMultiplier = 0.70; // Saturation modérée
+    } else if (podosInRadius >= 8) {
+      saturationMultiplier = 0.88;
+    }
+
+    if (pConcurrence < 20) {
+      saturationMultiplier = Math.min(saturationMultiplier, 0.45);
+    } else if (pConcurrence < 35) {
+      saturationMultiplier = Math.min(saturationMultiplier, 0.75);
+    }
+
     let composite = 0;
     if (totalEffectiveWeight > 0) {
       composite =
@@ -172,8 +235,10 @@ export function computeOpportunityScores(
         totalEffectiveWeight;
     }
 
+    const finalScore = Math.max(0, Math.min(100, Math.round(composite * saturationMultiplier * 10) / 10));
+
     feat.properties.is_excluded = false;
-    feat.properties.score = Math.max(0, Math.min(100, Math.round(composite * 10) / 10));
+    feat.properties.score = finalScore;
     feat.properties.score_pouvoir_achat = pPouvoirAchat;
     feat.properties.score_demande = pDemande;
     feat.properties.score_concurrence = pConcurrence;
@@ -182,29 +247,29 @@ export function computeOpportunityScores(
     feat.properties.score_transit = pTransit;
 
     // Diagnostic labels and qualitative levels
-    const density = typeof (feat.properties as any)[radiusKey] === 'number'
-      ? (feat.properties as any)[radiusKey]
-      : feat.properties.densite_pour_10k_65plus || 0;
-
-    if (density <= 3.0) {
+    if (podosInRadius === 0) {
       feat.properties.concurrence_niveau = 'tres_faible';
-      feat.properties.concurrence_label = '🛡️ Très faible concurrence';
+      feat.properties.concurrence_label = '🛡️ Désert (0 podologue à 2km)';
       feat.properties.concurrence_color = '#10b981';
-    } else if (density <= 8.0) {
+    } else if (podosInRadius <= 3) {
+      feat.properties.concurrence_niveau = 'tres_faible';
+      feat.properties.concurrence_label = `🛡️ Très faible (${podosInRadius} podo. à 2km)`;
+      feat.properties.concurrence_color = '#10b981';
+    } else if (podosInRadius <= 8) {
       feat.properties.concurrence_niveau = 'faible';
-      feat.properties.concurrence_label = '🟢 Faible concurrence';
+      feat.properties.concurrence_label = `🟢 Faible (${podosInRadius} podo. à 2km)`;
       feat.properties.concurrence_color = '#0d9488';
-    } else if (density <= 15.0) {
+    } else if (podosInRadius <= 15) {
       feat.properties.concurrence_niveau = 'moderee';
-      feat.properties.concurrence_label = '🟡 Concurrence modérée';
+      feat.properties.concurrence_label = `🟡 Modérée (${podosInRadius} podo. à 2km)`;
       feat.properties.concurrence_color = '#0284c7';
-    } else if (density <= 25.0) {
+    } else if (podosInRadius <= 25) {
       feat.properties.concurrence_niveau = 'elevee';
-      feat.properties.concurrence_label = '🟠 Concurrence soutenue';
+      feat.properties.concurrence_label = `🟠 Soutenue (${podosInRadius} podo. à 2km)`;
       feat.properties.concurrence_color = '#f59e0b';
     } else {
       feat.properties.concurrence_niveau = 'saturee';
-      feat.properties.concurrence_label = '🔴 Forte saturation';
+      feat.properties.concurrence_label = `🔴 Saturée (${podosInRadius} podo. à 2km)`;
       feat.properties.concurrence_color = '#ef4444';
     }
 
@@ -323,11 +388,11 @@ export function getTop10Zones(
  */
 export function getColorForScore(score: number, isExcluded: boolean = false): string {
   if (isExcluded) return '#94a3b8';
-  if (score < 25) return '#64748b'; // Slate 500
-  if (score < 45) return '#0284c7'; // Sky 600
-  if (score < 65) return '#0d9488'; // Teal 600
-  if (score < 80) return '#10b981'; // Emerald 500
-  return '#f59e0b'; // Amber 500
+  if (score < 25) return '#ef4444'; // Rouge (Zone saturée ou défavorable)
+  if (score < 45) return '#64748b'; // Ardoise (Concurrence soutenue / Risqué)
+  if (score < 60) return '#0284c7'; // Bleu (Intermédiaire)
+  if (score < 75) return '#0d9488'; // Teal (Favorable)
+  return '#10b981'; // Émeraude (Excellente opportunité d'installation)
 }
 
 /**

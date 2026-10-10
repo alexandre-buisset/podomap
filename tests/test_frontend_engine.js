@@ -63,12 +63,26 @@ top10Semelles.forEach((f, i) => {
   );
 });
 
-// Under Semelles profile, Seine-Saint-Denis should NOT monopolize top spots!
-const top10SemellesDepts = top10Semelles.map(f => f.properties.departement);
-console.log('Top 10 departments under Semelles profile:', top10SemellesDepts);
-const deptsAises = top10Semelles.filter(f => ['75', '92', '78', '94'].includes(f.properties.departement));
-if (deptsAises.length < 7) {
-  throw new Error(`Expected at least 7 affluent communes (75/92/78/94) in top 10 for Semelles profile, got ${deptsAises.length}`);
+// Under Semelles profile:
+// 1. All top spots must have high purchasing power (>= 25 000 €) and low competition (<= 5 podos at 2km)
+const allHighIncomeLowConc = top10Semelles.every(
+  (f) => f.properties.revenu_median >= 25000 && (f.properties.nb_podologues_2km ?? 0) <= 5
+);
+if (!allHighIncomeLowConc) {
+  throw new Error('All top 10 Semelles communes must have high income (>=25k€) and low competition (<=5 podos at 2km)');
+}
+
+// 2. Hyper-saturated communes (like Vincennes with 55 podos or Levallois with 97 podos) must be eliminated from top ranks
+const vincennes = scoredSemelles.find((f) => f.properties.nom === 'Vincennes');
+const nogent = scoredSemelles.find((f) => f.properties.nom === 'Nogent-sur-Marne');
+console.log(`Vincennes score: ${vincennes?.properties.score} / 100 (Podos 2km: ${vincennes?.properties.nb_podologues_2km})`);
+console.log(`Nogent score: ${nogent?.properties.score} / 100 (Podos 2km: ${nogent?.properties.nb_podologues_2km})`);
+
+if ((vincennes?.properties.score ?? 100) > 30) {
+  throw new Error(`Vincennes must be penalized by saturation (score <= 30, got ${vincennes?.properties.score})`);
+}
+if ((nogent?.properties.score ?? 100) > 35) {
+  throw new Error(`Nogent-sur-Marne must be penalized by saturation (score <= 35, got ${nogent?.properties.score})`);
 }
 
 // 3. Test Profil 3: Médical & Diabète (pure désert conventionné)

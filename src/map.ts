@@ -310,10 +310,8 @@ export class MapManager {
       const gareInfo = props.gare_nom ? `${props.gare_nom}` : '';
 
       const podoRadius = props.nb_podologues_rayon ?? props.nb_podologues_2km ?? 0;
-      const densitySenior = props.densite_pour_10k_65plus ?? props.densite_10k_65plus_2km ?? 0;
       const revMedian = props.revenu_median ? `${Number(props.revenu_median).toLocaleString('fr-FR')} €/an` : '-';
       const semellesPrice = props.panier_semelles_estime ? `~${props.panier_semelles_estime} €` : '-';
-      const concLabel = props.concurrence_label || `${podoRadius} podologues (${Number(densitySenior).toFixed(1)}/10k)`;
       const concColor = props.concurrence_color || '#0284c7';
 
       let html = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px 6px; min-width: 220px; color: #0f172a;">
@@ -333,28 +331,41 @@ export class MapManager {
         </div>`;
       }
 
+      const ratioLabel = props.ratio_hab_label || `${podoRadius} podo. à 2km`;
+      const ratioColor = props.ratio_hab_color || concColor;
+
       html += `<div style="font-size: 0.74rem; line-height: 1.5; border-top: 1px solid #e2e8f0; padding-top: 5px;">
-        <div style="margin-bottom: 2px;">
-          <strong>🛡️ Concurrence :</strong>
-          <span style="color: ${concColor}; font-weight: 700;"> ${concLabel}</span>
-          <span style="color: #64748b;"> (${podoRadius} podo. à 2km)</span>
+        <div style="margin-bottom: 3px;">
+          <strong>🛡️ Concurrence métier :</strong>
+          <span style="color: ${ratioColor}; font-weight: 700;"> ${ratioLabel}</span>
+          <span style="color: #64748b;"> • ${podoRadius} à 2km</span>
         </div>
-        <div style="margin-bottom: 2px;">
+        <div style="margin-bottom: 3px;">
           <strong>💎 Pouvoir d'achat :</strong>
           <span> ${revMedian}</span>
           <span style="color: #d97706; font-weight: 600;"> (Semelles: ${semellesPrice})</span>
         </div>
-        <div style="margin-bottom: 2px;">
+        <div style="margin-bottom: 3px;">
           <strong>👥 Demande Seniors :</strong>
           <span> ${pop65} hab.</span>
           <span style="color: #64748b;"> (${part65} % des ${pop} hab.)</span>
         </div>`;
 
       if (tempsParis || gareInfo) {
-        html += `<div>
+        html += `<div style="margin-bottom: 3px;">
           <strong>🚆 Transports :</strong>
           <span> ${tempsParis ? tempsParis : ''}</span>
           <span style="color: #64748b;">${gareInfo ? ` (${gareInfo})` : ''}</span>
+        </div>`;
+      }
+
+      if (podoRadius >= 20) {
+        html += `<div style="margin-top: 5px; padding: 3px 6px; background: #fee2e2; color: #b91c1c; border-radius: 4px; font-weight: 700; font-size: 0.71rem;">
+          ⚠️ Zone saturée (${podoRadius} confrères dans un rayon de 2 km)
+        </div>`;
+      } else if (podoRadius <= 2) {
+        html += `<div style="margin-top: 5px; padding: 3px 6px; background: #ecfdf5; color: #047857; border-radius: 4px; font-weight: 700; font-size: 0.71rem;">
+          🌟 Très faible concurrence (Désert podologique - Forte opportunité)
         </div>`;
       }
 

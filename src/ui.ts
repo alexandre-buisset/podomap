@@ -661,8 +661,8 @@ export class UIManager {
         pillScore = `${density.toFixed(1)} /10k`;
         pillColor = concColor;
         pillBadgeHtml = `
-          <span class="ranking-pill-badge" style="color: ${concColor}; background: ${concColor}18; border-color: ${concColor}45;">
-            ${concLabel} • ${podoRadius} podo. à ${radius}km
+          <span class="ranking-pill-badge" style="color: ${p.ratio_hab_color || concColor}; background: ${p.ratio_hab_color || concColor}18; border-color: ${p.ratio_hab_color || concColor}45;">
+            ${p.ratio_hab_label || concLabel} • ${podoRadius} podo. à ${radius}km
           </span>`;
       } else if (criterion === 'pouvoir_achat') {
         pillScore = `${p.revenu_median ? `${Math.round(p.revenu_median / 1000)}k€` : '-'}`;
@@ -690,8 +690,8 @@ export class UIManager {
         pillScore = (p.score || 0).toFixed(1);
         pillColor = getColorForScore(p.score || 0);
         pillBadgeHtml = `
-          <span class="ranking-pill-badge" style="color: ${concColor}; background: ${concColor}15; border-color: ${concColor}35;">
-            ${concLabel} (${podoRadius} podo.)
+          <span class="ranking-pill-badge" style="color: ${p.ratio_hab_color || concColor}; background: ${p.ratio_hab_color || concColor}15; border-color: ${p.ratio_hab_color || concColor}35;">
+            ${p.ratio_hab_label || `${podoRadius} podo. à ${radius}km`}
           </span>
           <span class="ranking-pill-badge" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.25);">
             💎 ~${p.panier_semelles_estime || 170}€
@@ -893,6 +893,15 @@ export class UIManager {
     setVal('m-part-65plus', `${((p.part_65plus || 0) * 100).toFixed(1)} %`);
     setVal('m-podo-zone', `${p.nb_podologues || 0}`);
     setVal('m-podo-radius', `${podoInRadius}`);
+
+    const elRatio = document.getElementById('m-ratio-hab-podo');
+    if (elRatio) {
+      elRatio.textContent = p.ratio_hab_label || (p.nb_podologues === 0 ? `🛡️ 0 podologue (${Number(p.pop_totale || 0).toLocaleString('fr-FR')} hab.)` : `1 pour ${Math.round((p.pop_totale || 0) / (p.nb_podologues || 1)).toLocaleString('fr-FR')} hab.`);
+      if (p.ratio_hab_color) {
+        elRatio.style.color = p.ratio_hab_color;
+      }
+    }
+
     setVal('m-density-senior', `${Number(densityInRadius).toFixed(2)} podo. / 10k seniors`);
     setVal('m-diabete-prev', `${p.prevalence_diabete ?? '-'} % (coef. ${p.coef_diabete ?? 1.0})`);
     setVal('m-pop-revenu', `${revMedian ? `${revMedian.toLocaleString('fr-FR')} € / an` : '-'}`);
