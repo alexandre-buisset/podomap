@@ -48,6 +48,12 @@ def extract_insee_population(
     df["dept"] = df["COM"].str[:2]
     df_filtered = df[df["dept"].isin(departments)].copy()
 
+    # Handle recent commune mergers (e.g. 93059 Pierrefitte-sur-Seine merged into 93066 Saint-Denis)
+    COMMUNE_MERGERS = {
+        "93059": "93066",  # Pierrefitte-sur-Seine -> Saint-Denis
+    }
+    df_filtered["COM"] = df_filtered["COM"].replace(COMMUNE_MERGERS)
+
     # Clean numeric columns
     df_filtered["P21_POP"] = pd.to_numeric(df_filtered["P21_POP"], errors="coerce").fillna(0)
     df_filtered["P21_POP65P"] = pd.to_numeric(df_filtered["P21_POP65P"], errors="coerce").fillna(0)

@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-10-10T11:20:31.164689+00:00",
+  "departments": [
+    "75",
+    "92",
+    "93",
+    "94"
+  ],
+  "total_zones": 142,
+  "total_podologues_points": 1732,
+  "total_population": 6852439,
+  "total_65plus": 1035616,
+  "radii_km": [
+    1,
+    2,
+    3
+  ],
+  "default_radius_km": 2,
+  "default_min_population": 5000,
+  "diabetes_idf_avg_pct": 5.915,
+  "sources": {
+    "rpps": "ANS - Annuaire Santé 2026",
+    "ban": "Base Adresse Nationale / API Adresse",
+    "insee": "Recensement Insee 2021",
+    "ameli": "Assurance Maladie - Cartographie des pathologies 2023",
+    "contours": "geo.api.gouv.fr & Open Data Ville de Paris"
+  }
+}
