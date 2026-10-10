@@ -5,6 +5,7 @@ export interface UIEventListeners {
   onFiltersChanged: (filters: FilterSettings) => void;
   onZoneClickedFromTop10: (zone: ZoneFeature) => void;
   onResetWeights: () => void;
+  onRecenterIDF?: () => void;
 }
 
 const PRESET_DESCRIPTIONS: Record<StrategyPreset, { badge: string; desc: string }> = {
@@ -231,6 +232,36 @@ export class UIManager {
         this.listeners.onFiltersChanged(this.currentFilters);
       });
     });
+
+    // 16. Recenter IDF Button
+    const btnRecenter = document.getElementById('btn-recenter-idf');
+    btnRecenter?.addEventListener('click', () => {
+      this.listeners.onRecenterIDF?.();
+    });
+
+    // 17. Quick Toggle Podologues Practices Button in Floating Bar
+    const btnQuickPodo = document.getElementById('btn-quick-toggle-podo');
+    btnQuickPodo?.addEventListener('click', () => {
+      this.currentFilters.showPodologuesLayer = !this.currentFilters.showPodologuesLayer;
+      const togglePodo = document.getElementById('toggle-podologues-layer') as HTMLInputElement;
+      if (togglePodo) togglePodo.checked = this.currentFilters.showPodologuesLayer;
+      btnQuickPodo.classList.toggle('active', this.currentFilters.showPodologuesLayer);
+      const chip = document.getElementById('legend-podologues-chip');
+      if (chip) chip.classList.toggle('hidden', !this.currentFilters.showPodologuesLayer);
+      this.listeners.onFiltersChanged(this.currentFilters);
+    });
+
+    // 18. Smart Strategy Quick Chips
+    const smartChips = document.querySelectorAll('#smart-chips-group .smart-chip');
+    smartChips.forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const smartType = target.getAttribute('data-smart') || '';
+        smartChips.forEach((c) => c.classList.remove('active'));
+        target.classList.add('active');
+        this.applySmartFilter(smartType);
+      });
+    });
   }
 
   public applyPreset(preset: StrategyPreset): void {
@@ -262,6 +293,175 @@ export class UIManager {
     this.updatePresetDisplay();
     this.updateSliderLabels();
     this.listeners.onFiltersChanged(this.currentFilters);
+  }
+
+  public applySmartFilter(type: string): void {
+    const setCriterionPill = (crit: MapDisplayCriterion) => {
+      this.currentFilters.displayCriterion = crit;
+      const criterionPills = document.querySelectorAll('#criterion-btn-group .mode-pill');
+      criterionPills.forEach((p) => {
+        p.classList.toggle('active', p.getAttribute('data-criterion') === crit);
+      });
+      this.updateLegendDisplay(crit);
+      this.updateRankingHeader(crit);
+    };
+
+    if (type === 'desert') {
+      this.currentFilters.weights = {
+        pouvoir_achat_semelles: 15,
+        concurrence_inv: 60,
+        demande_65plus: 25,
+        transport_access: 0,
+        coef_diabete: 0,
+        bonus_zonage: 0,
+      };
+      this.currentFilters.activePreset = 'custom';
+      setCriterionPill('concurrence');
+    } else if (type === 'riche') {
+      this.currentFilters.weights = {
+        pouvoir_achat_semelles: 55,
+        concurrence_inv: 25,
+        demande_65plus: 15,
+        transport_access: 5,
+        coef_diabete: 0,
+        bonus_zonage: 0,
+      };
+      this.currentFilters.activePreset = 'semelles';
+      setCriterionPill('pouvoir_achat');
+    } else if (type === 'proche_paris') {
+      this.currentFilters.maxTransitTimeParis = 25;
+      this.currentFilters.requireTransitStation = true;
+      const toggleStation = document.getElementById('toggle-require-station') as HTMLInputElement;
+      if (toggleStation) toggleStation.checked = true;
+      setCriterionPill('transports');
+    } else if (type === 'seniors') {
+      this.currentFilters.weights = {
+        demande_65plus: 55,
+        concurrence_inv: 25,
+        pouvoir_achat_semelles: 15,
+        transport_access: 5,
+        coef_diabete: 0,
+        bonus_zonage: 0,
+      };
+      this.currentFilters.activePreset = 'custom';
+      setCriterionPill('seniors');
+    }
+
+    const sliderPouvoirAchat = document.getElementById('slider-pouvoir-achat') as HTMLInputElement;
+    const sliderConcurrence = document.getElementById('slider-concurrence') as HTMLInputElement;
+    const sliderDemande = document.getElementById('slider-demande') as HTMLInputElement;
+    const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
+    const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
+    const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
+
+    const w = this.currentFilters.weights;
+    if (sliderPouvoirAchat) sliderPouvoirAchat.value = String(w.pouvoir_achat_semelles);
+    if (sliderConcurrence) sliderConcurrence.value = String(w.concurrence_inv);
+    if (sliderDemande) sliderDemande.value = String(w.demande_65plus);
+    if (sliderTransports) sliderTransports.value = String(w.transport_access);
+    if (sliderDiabete) sliderDiabete.value = String(w.coef_diabete);
+    if (sliderZonage) sliderZonage.value = String(w.bonus_zonage);
+
+    this.updatePresetDisplay();
+    this.updateSliderLabels();
+    this.listeners.onFiltersChanged(this.currentFilters);
+  }
+
+  public initSearch(
+    features: ZoneFeature[],
+    onZoneSelect: (zone: ZoneFeature) => void
+  ): void {
+    const input = document.getElementById('global-zone-search') as HTMLInputElement;
+    const dropdown = document.getElementById('search-results-dropdown');
+    const btnClear = document.getElementById('btn-clear-search');
+    if (!input || !dropdown) return;
+
+    const normalize = (str: string) =>
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+
+    input.addEventListener('input', () => {
+      const raw = input.value.trim();
+      const q = normalize(raw);
+      if (btnClear) btnClear.classList.toggle('hidden', q.length === 0);
+
+      if (q.length < 2) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        return;
+      }
+
+      const matches = features
+        .filter((f) => {
+          const nom = normalize(f.properties.nom || '');
+          const insee = f.properties.code_insee || '';
+          const dept = f.properties.departement || '';
+          return nom.includes(q) || insee.startsWith(q) || (q.length >= 2 && dept === q);
+        })
+        .slice(0, 8);
+
+      if (matches.length === 0) {
+        dropdown.innerHTML = `<div class="search-no-result">Aucune commune trouvée pour "${input.value}"</div>`;
+        dropdown.classList.remove('hidden');
+        return;
+      }
+
+      dropdown.innerHTML = '';
+      matches.forEach((f) => {
+        const p = f.properties as any;
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        const income = p.revenu_median ? `${p.revenu_median.toLocaleString('fr-FR')} €` : '-';
+        const podos = p.nb_podologues_2km ?? p.nb_podologues ?? 0;
+        const color = getColorForScore(p.score || 0);
+
+        item.innerHTML = `
+          <div class="search-item-info">
+            <div class="search-item-name">
+              <strong>${p.nom}</strong>
+              <span class="search-dept-badge">Dép. ${p.departement}</span>
+            </div>
+            <div class="search-item-meta">
+              <span>👥 ${Number(p.pop_totale || 0).toLocaleString('fr-FR')} hab.</span>
+              <span>•</span>
+              <span>Rev. ${income}</span>
+              <span>•</span>
+              <span style="color:${p.concurrence_color || '#10b981'}; font-weight:600;">${podos} podo. (2km)</span>
+            </div>
+          </div>
+          <div class="search-item-score" style="color:${color}; background:${color}15; border:1px solid ${color}40;">
+            ${(p.score || 0).toFixed(1)}
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          input.value = p.nom;
+          dropdown.classList.add('hidden');
+          onZoneSelect(f);
+        });
+
+        dropdown.appendChild(item);
+      });
+
+      dropdown.classList.remove('hidden');
+    });
+
+    btnClear?.addEventListener('click', () => {
+      input.value = '';
+      btnClear.classList.add('hidden');
+      dropdown.classList.add('hidden');
+      dropdown.innerHTML = '';
+      input.focus();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!input.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
+        dropdown.classList.add('hidden');
+      }
+    });
   }
 
   private updatePresetDisplay(): void {
@@ -702,6 +902,83 @@ export class UIManager {
     document.querySelectorAll('.m-radius-val').forEach((el) => {
       el.textContent = String(radius);
     });
+
+    // Regional Benchmark vs Île-de-France (1 285 communes, 12.3M hab)
+    const elBmIncome = document.getElementById('bm-val-income');
+    const elBmDiffIncome = document.getElementById('bm-diff-income');
+    const elBmFillIncome = document.getElementById('bm-fill-income');
+
+    const elBmDensity = document.getElementById('bm-val-density');
+    const elBmDiffDensity = document.getElementById('bm-diff-density');
+    const elBmFillDensity = document.getElementById('bm-fill-density');
+
+    const elBmTransit = document.getElementById('bm-val-transit');
+    const elBmDiffTransit = document.getElementById('bm-diff-transit');
+    const elBmFillTransit = document.getElementById('bm-fill-transit');
+
+    const IDF_AVG_INCOME = 25800;
+    const IDF_AVG_DENSITY = 9.2;
+    const IDF_AVG_TRANSIT = 42;
+
+    if (elBmIncome) elBmIncome.textContent = revMedian ? `${revMedian.toLocaleString('fr-FR')} €` : '-';
+    if (elBmDiffIncome) {
+      if (!revMedian) {
+        elBmDiffIncome.textContent = '-';
+        elBmDiffIncome.className = 'bm-tag';
+      } else if (revMedian >= IDF_AVG_INCOME) {
+        const pct = Math.round(((revMedian - IDF_AVG_INCOME) / IDF_AVG_INCOME) * 100);
+        elBmDiffIncome.textContent = `+${pct}% vs IDF`;
+        elBmDiffIncome.className = 'bm-tag tag-green';
+      } else {
+        const pct = Math.round(((IDF_AVG_INCOME - revMedian) / IDF_AVG_INCOME) * 100);
+        elBmDiffIncome.textContent = `-${pct}% vs IDF`;
+        elBmDiffIncome.className = 'bm-tag tag-orange';
+      }
+    }
+    if (elBmFillIncome) {
+      const pct = Math.min(100, Math.max(10, Math.round((revMedian / 45000) * 100)));
+      elBmFillIncome.style.width = `${pct}%`;
+    }
+
+    if (elBmDensity) elBmDensity.textContent = `${Number(densityInRadius).toFixed(1)} podo.`;
+    if (elBmDiffDensity) {
+      if (densityInRadius <= 3.0) {
+        elBmDiffDensity.textContent = `🛡️ Désert`;
+        elBmDiffDensity.className = 'bm-tag tag-emerald';
+      } else if (densityInRadius < IDF_AVG_DENSITY) {
+        elBmDiffDensity.textContent = `🟢 Moins saturé`;
+        elBmDiffDensity.className = 'bm-tag tag-green';
+      } else {
+        elBmDiffDensity.textContent = `⚠️ Plus saturé`;
+        elBmDiffDensity.className = 'bm-tag tag-red';
+      }
+    }
+    if (elBmFillDensity) {
+      const pct = Math.min(100, Math.max(5, Math.round((densityInRadius / 25) * 100)));
+      elBmFillDensity.style.width = `${pct}%`;
+    }
+
+    if (elBmTransit) elBmTransit.textContent = p.temps_paris_min ? `${p.temps_paris_min} min` : '-';
+    if (elBmDiffTransit) {
+      if (!p.temps_paris_min) {
+        elBmDiffTransit.textContent = '-';
+        elBmDiffTransit.className = 'bm-tag';
+      } else if (p.temps_paris_min <= 25) {
+        elBmDiffTransit.textContent = `⚡ Express (<25m)`;
+        elBmDiffTransit.className = 'bm-tag tag-cyan';
+      } else if (p.temps_paris_min <= IDF_AVG_TRANSIT) {
+        elBmDiffTransit.textContent = `🚆 Rapide`;
+        elBmDiffTransit.className = 'bm-tag tag-green';
+      } else {
+        elBmDiffTransit.textContent = `⏱️ Éloigné`;
+        elBmDiffTransit.className = 'bm-tag tag-orange';
+      }
+    }
+    if (elBmFillTransit) {
+      const t = p.temps_paris_min || 60;
+      const pct = Math.min(100, Math.max(10, Math.round(((90 - t) / 75) * 100)));
+      elBmFillTransit.style.width = `${pct}%`;
+    }
 
     if (autoSwitchTab) {
       this.switchTab('detail');

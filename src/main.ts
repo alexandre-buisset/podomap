@@ -36,6 +36,7 @@ class App {
       onFiltersChanged: (filters) => this.handleFiltersChanged(filters),
       onZoneClickedFromTop10: (zone) => this.handleZoneSelected(zone, true),
       onResetWeights: () => this.handleFiltersChanged(this.currentFilters),
+      onRecenterIDF: () => this.mapManager?.flyTo(2.3522, 48.8566, 10.2),
     });
 
     // 2. Initialize Map Manager
@@ -113,6 +114,11 @@ class App {
       this.selectedZone = top10[0];
       this.uiManager?.renderZoneDetail(top10[0], false);
     }
+
+    // Initialize instant search autocomplete
+    this.uiManager?.initSearch(this.zonesGeoJSON.features, (zone) => {
+      this.handleZoneSelected(zone, true);
+    });
   }
 
   private handleFiltersChanged(newFilters: FilterSettings): void {

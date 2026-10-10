@@ -245,7 +245,31 @@ export class MapManager {
       },
     });
 
-    // 9. Podologues Practice Locations Points
+    // 9a. Podologues Catchment / Neighborhood Coverage Halos (shows ~1km influence zone per cabinet)
+    this.map.addLayer({
+      id: 'podologues-halos',
+      type: 'circle',
+      source: 'podologues-source',
+      layout: {
+        visibility: 'none',
+      },
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          9, 6,
+          11, 14,
+          13, 30,
+          15, 65
+        ],
+        'circle-color': '#06b6d4',
+        'circle-opacity': 0.16,
+        'circle-stroke-width': 1.0,
+        'circle-stroke-color': '#06b6d4',
+        'circle-stroke-opacity': 0.4,
+      },
+    });
+
+    // 9b. Podologues Practice Locations Points
     this.map.addLayer({
       id: 'podologues-circles',
       type: 'circle',
@@ -254,11 +278,16 @@ export class MapManager {
         visibility: 'none',
       },
       paint: {
-        'circle-radius': 4.5,
-        'circle-color': '#0ea5e9',
-        'circle-stroke-width': 1.5,
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          9, 3,
+          12, 4.5,
+          14, 6.5
+        ],
+        'circle-color': '#06b6d4',
+        'circle-stroke-width': 2.0,
         'circle-stroke-color': '#ffffff',
-        'circle-opacity': 0.9,
+        'circle-opacity': 0.95,
       },
     });
   }
@@ -423,12 +452,12 @@ export class MapManager {
   }
 
   public setPodologuesVisible(visible: boolean): void {
+    const val = visible ? 'visible' : 'none';
     if (this.map.getLayer('podologues-circles')) {
-      this.map.setLayoutProperty(
-        'podologues-circles',
-        'visibility',
-        visible ? 'visible' : 'none'
-      );
+      this.map.setLayoutProperty('podologues-circles', 'visibility', val);
+    }
+    if (this.map.getLayer('podologues-halos')) {
+      this.map.setLayoutProperty('podologues-halos', 'visibility', val);
     }
   }
 

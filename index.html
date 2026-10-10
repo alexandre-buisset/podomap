@@ -41,15 +41,16 @@
         </div>
       </div>
 
-      <div class="header-center-disclaimer">
-        <span class="badge-warning">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      <div class="header-search-container">
+        <div class="search-input-wrapper">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          Aide à la décision · Pas une prévision de CA
-        </span>
+          <input type="text" id="global-zone-search" placeholder="🔍 Rechercher une commune ou un arrondissement (ex: Vincennes, 15e, Neuilly...)" autocomplete="off" />
+          <button id="btn-clear-search" class="btn-clear-search hidden" title="Effacer la recherche">&times;</button>
+        </div>
+        <div id="search-results-dropdown" class="search-results-dropdown hidden"></div>
       </div>
 
       <div class="header-actions">
@@ -78,7 +79,7 @@
 
         <!-- Floating Criterion Selector Bar -->
         <div id="map-mode-selector" class="glass-card map-floating-bar">
-          <span class="mode-bar-label">Afficher sur la carte :</span>
+          <span class="mode-bar-label">Afficher :</span>
           <div class="mode-pills-row" id="criterion-btn-group">
             <button class="mode-pill active" data-criterion="score_global" title="Score synthétique selon le profil et les pondérations">
               🌟 Score Global
@@ -94,6 +95,15 @@
             </button>
             <button class="mode-pill" data-criterion="transports" title="Accessibilité et temps de trajet estimé vers Paris Châtelet">
               🚆 Transports
+            </button>
+          </div>
+          <div class="mode-divider"></div>
+          <div class="mode-tools-row">
+            <button id="btn-quick-toggle-podo" class="mode-pill pill-toggle-podo" title="Voir l'emplacement exact des 3 084 cabinets et leur zone de couverture 1km">
+              📍 Cabinets (3 084)
+            </button>
+            <button id="btn-recenter-idf" class="mode-pill pill-tool" title="Recentrer la carte sur l'ensemble de l'Île-de-France">
+              🎯 Vue IDF
             </button>
           </div>
         </div>
@@ -190,6 +200,25 @@
             <p id="preset-description" class="control-hint">
               <strong>💎 Semelles & Pouvoir d'Achat (Rentabilité) :</strong> Valorise les communes à haut revenu disponible (INSEE Filosofi) où le reste à charge des semelles (140€-210€) et dépassements d'honoraires sont absorbés par les mutuelles premium.
             </p>
+          </div>
+
+          <!-- Smart Strategy Quick Chips -->
+          <div class="control-group">
+            <label class="control-title">Filtres Rapides Intelligents</label>
+            <div class="smart-chips-grid" id="smart-chips-group">
+              <button class="smart-chip" data-smart="desert" title="Afficher uniquement les déserts médicaux stricts (< 3 podologues / 10k seniors)">
+                🛡️ Déserts (&lt;3 podo)
+              </button>
+              <button class="smart-chip" data-smart="riche" title="Afficher uniquement les communes à très fort pouvoir d'achat (> 30 000 €/an)">
+                💎 Très aisé (&gt;30k€)
+              </button>
+              <button class="smart-chip" data-smart="proche_paris" title="Afficher uniquement les zones à moins de 25 min de Paris">
+                🚆 Paris &lt;25 min
+              </button>
+              <button class="smart-chip" data-smart="seniors" title="Afficher uniquement les gros bassins de plus de 5 000 seniors">
+                👥 Seniors &gt;5k
+              </button>
+            </div>
           </div>
 
           <!-- Department Filter -->
@@ -566,6 +595,48 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- IDF Regional Benchmark Comparison -->
+            <div class="sheet-section">
+              <h4 class="section-title">📊 Comparatif vs Moyenne Régionale IDF</h4>
+              <div class="benchmark-grid">
+                <div class="benchmark-card">
+                  <div class="bm-header">
+                    <span class="bm-label">Revenu disponible</span>
+                    <span id="bm-diff-income" class="bm-tag">-</span>
+                  </div>
+                  <div class="bm-val-row">
+                    <strong id="bm-val-income">-</strong>
+                    <span class="bm-ref">Moy. IDF : 25 800 €</span>
+                  </div>
+                  <div class="bm-gauge-bar"><div id="bm-fill-income" class="bm-fill"></div></div>
+                </div>
+
+                <div class="benchmark-card">
+                  <div class="bm-header">
+                    <span class="bm-label">Densité / 10k seniors</span>
+                    <span id="bm-diff-density" class="bm-tag">-</span>
+                  </div>
+                  <div class="bm-val-row">
+                    <strong id="bm-val-density">-</strong>
+                    <span class="bm-ref">Moy. IDF : 9.2 podo.</span>
+                  </div>
+                  <div class="bm-gauge-bar"><div id="bm-fill-density" class="bm-fill"></div></div>
+                </div>
+
+                <div class="benchmark-card">
+                  <div class="bm-header">
+                    <span class="bm-label">Accès Paris Châtelet</span>
+                    <span id="bm-diff-transit" class="bm-tag">-</span>
+                  </div>
+                  <div class="bm-val-row">
+                    <strong id="bm-val-transit">-</strong>
+                    <span class="bm-ref">Moy. IDF : ~42 min</span>
+                  </div>
+                  <div class="bm-gauge-bar"><div id="bm-fill-transit" class="bm-fill"></div></div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
