@@ -112,14 +112,56 @@ export class UIManager {
       this.listeners.onFiltersChanged(this.currentFilters);
     });
 
-    // 8. Sidebar Toggle Button
+    // 8. Toggle Transports Layer
+    const toggleTransports = document.getElementById('toggle-transports-layer') as HTMLInputElement;
+    toggleTransports?.addEventListener('change', () => {
+      this.currentFilters.showTransportsLayer = toggleTransports.checked;
+      const chip = document.getElementById('legend-transports-chip');
+      if (chip) {
+        chip.classList.toggle('hidden', !toggleTransports.checked);
+      }
+      this.listeners.onFiltersChanged(this.currentFilters);
+    });
+
+    // 9. Toggle City Labels
+    const toggleLabels = document.getElementById('toggle-city-labels') as HTMLInputElement;
+    toggleLabels?.addEventListener('change', () => {
+      this.currentFilters.showCityLabels = toggleLabels.checked;
+      this.listeners.onFiltersChanged(this.currentFilters);
+    });
+
+    // 10. Transit Travel Time Filter Pills
+    const transitPills = document.querySelectorAll('#transit-time-btn-group .pill-btn');
+    transitPills.forEach((pill) => {
+      pill.addEventListener('click', (e) => {
+        transitPills.forEach((p) => p.classList.remove('active'));
+        const target = e.currentTarget as HTMLElement;
+        target.classList.add('active');
+        const maxTime = Number(target.getAttribute('data-transit-time')) || 0;
+        this.currentFilters.maxTransitTimeParis = maxTime;
+        const label = document.getElementById('val-transit-time-label');
+        if (label) {
+          label.textContent = maxTime === 0 ? 'Tous' : `< ${maxTime} min`;
+        }
+        this.listeners.onFiltersChanged(this.currentFilters);
+      });
+    });
+
+    // 11. Toggle Require Station Nearby
+    const toggleRequireStation = document.getElementById('toggle-require-station') as HTMLInputElement;
+    toggleRequireStation?.addEventListener('change', () => {
+      this.currentFilters.requireTransitStation = toggleRequireStation.checked;
+      this.listeners.onFiltersChanged(this.currentFilters);
+    });
+
+    // 12. Sidebar Toggle Button
     const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
     const sidebar = document.getElementById('sidebar');
     btnToggleSidebar?.addEventListener('click', () => {
       sidebar?.classList.toggle('collapsed');
     });
 
-    // 9. Methodology Modal
+    // 13. Methodology Modal
     const btnOpenMethodo = document.getElementById('btn-open-methodology');
     const btnCloseMethodo = document.getElementById('btn-close-modal');
     const modalMethodo = document.getElementById('modal-methodology');
@@ -302,6 +344,41 @@ export class UIManager {
     const elBarFillDia = document.getElementById('bar-fill-diabete');
     if (elBarValDia) elBarValDia.textContent = `${pctDiabete} % (Poids: ${w.coef_diabete}%)`;
     if (elBarFillDia) elBarFillDia.style.width = `${pctDiabete}%`;
+
+    // Transit Accessibility Card
+    const elTransitTime = document.getElementById('m-transit-time');
+    const elTransitStation = document.getElementById('m-transit-station');
+    const elTransitDist = document.getElementById('m-transit-dist');
+    const elTransitNbGares = document.getElementById('m-transit-nb-gares');
+    const elTransitLines = document.getElementById('m-transit-lines');
+
+    if (elTransitTime) {
+      elTransitTime.textContent = p.temps_paris_min ? `~${p.temps_paris_min} min vers Paris Châtelet` : '-';
+    }
+    if (elTransitStation) {
+      elTransitStation.textContent = p.gare_nom ? `${p.gare_nom}` : 'Aucune gare proche';
+    }
+    if (elTransitDist) {
+      elTransitDist.textContent = p.gare_dist_km != null ? `${p.gare_dist_km} km (${p.gare_mode || ''})` : '-';
+    }
+    if (elTransitNbGares) {
+      const nb = p.nb_gares_1_5km || 0;
+      elTransitNbGares.textContent = `${nb} station${nb > 1 ? 's' : ''} ferrée${nb > 1 ? 's' : ''}`;
+    }
+    if (elTransitLines) {
+      elTransitLines.innerHTML = '';
+      const lignes = p.gare_lignes || [];
+      if (lignes.length === 0) {
+        elTransitLines.textContent = p.gare_mode || 'Réseau bus';
+      } else {
+        lignes.forEach((lig: string) => {
+          const badge = document.createElement('span');
+          badge.className = `badge-transit-line mode-${p.gare_mode || 'TRAIN'}`;
+          badge.textContent = lig;
+          elTransitLines.appendChild(badge);
+        });
+      }
+    }
 
     // Metrics Table
     const podoInRadius = p[`nb_podologues_${radius}km`] ?? p.nb_podologues_rayon ?? 0;

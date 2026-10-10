@@ -84,3 +84,23 @@ Ce document consigne les choix structurants, techniques et fonctionnels opérés
   - Prise en compte des évolutions administratives récentes (fusion de Pierrefitte-sur-Seine `93059` dans Saint-Denis `93066` en 2025).
   - La source INSEE téléchargée (`base-ic-evol-struct-pop-2021`) contient déjà les 5 265 identifiants IRIS d'Île-de-France avec population et population 65+ ; le code est prêt pour une déclinaison à la maille IRIS si les contours IRIS sont activés.
 
+---
+
+## 9. Noms des villes et suppression des dépendances API Key
+* **Contexte :** Certains fournisseurs de tuiles tiers (comme CARTO Voyager) ont instauré des restrictions de clés d'API entraînant des blocages ou filigranes sur localhost. De plus, les polygones pleins du choroplèthe masquaient la toponymie sous-jacente.
+* **Décision :**
+  - Utilisation du flux de tuiles officiel OpenStreetMap (`tile.openstreetmap.org`) et glyphes vectoriels libres (`demotiles.maplibre.org`), garantissant 0 clé d'API, 0 filigrane et 100% de disponibilité gratuite.
+  - Ajout d'une couche vectorielle dédiée de labels communaux (`zones-labels`) directement sur les polygones, avec halo blanc contrasté pour assurer une lisibilité parfaite des noms de communes et arrondissements à tous les niveaux de zoom.
+
+---
+
+## 10. Intégration du Réseau de Transports IDFM & Temps de Trajet vers Paris
+* **Contexte :** Pour l'installation d'un cabinet de podologie, la desserte en transport en commun (Métro, RER, Transilien, Tramway) est un facteur d'attractivité capital tant pour les patients (notamment les personnes âgées) que pour les déplacements du praticien vers Paris.
+* **Décision :**
+  - Téléchargement et intégration des données ouvertes officielles d'Île-de-France Mobilités : 999 gares/stations géolocalisées et 1 673 tronçons de lignes avec codes couleurs officiels.
+  - Calcul automatisé pour chaque commune :
+    - Gare la plus proche, distance et modes desservis.
+    - Dénombrement des gares dans un rayon de 1.5 km.
+    - Temps de trajet estimé vers le centre de Paris (Châtelet) en combinant distance d'accès et vitesse commerciale par mode ferroviaire.
+  - Ajout d'un affichage cartographique interactif avec popups et de filtres d'accessibilité (temps max vers Paris, gare obligatoire).
+

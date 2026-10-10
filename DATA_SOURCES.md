@@ -93,3 +93,28 @@ Ce document recense l'ensemble des sources ouvertes utilisées, leur URL officie
 * **Solution mise en place :**
   - Fichier de configuration manuelle : `data/zonage_manuel.csv` éditable.
   - Comportement par défaut : si aucun zonage n'est spécifié, le poids de ce critère (15%) est redistribué de façon transparente sur les 3 autres critères (Demande et Concurrence).
+
+---
+
+## 7. Réseau de transport en commun – Île-de-France Mobilités (IDFM)
+* **Producteur :** Île-de-France Mobilités (IDFM)
+* **Plateforme :** data.iledefrance-mobilites.fr / data.gouv.fr
+* **Jeux de données :**
+  - *Emplacement des gares d'Île-de-France (donnée généralisée)* : `https://data.iledefrance-mobilites.fr/explore/dataset/emplacement-des-gares-idf-data-generalisee/` (999 gares et stations géolocalisées).
+  - *Tracés du réseau ferré d'Île-de-France* : `https://data.iledefrance-mobilites.fr/explore/dataset/traces-du-reseau-ferre-idf/` (1 673 tronçons avec couleurs officielles en hexadécimal).
+* **Licence :** Licence Ouverte 2.0 (Etalab)
+* **Modes couverts :** Métro, RER, Train (Transilien / SNCF), Tramway.
+* **Calculs dérivés par commune :**
+  - `gare_nom` : Gare ou station la plus proche.
+  - `gare_dist_km` : Distance à vol d'oiseau entre le centroïde et la gare.
+  - `nb_gares_1_5km` : Dénombrement des gares accessibles à moins de 1.5 km.
+  - `temps_paris_min` : Temps de trajet estimé vers Paris Châtelet en transport (modèle tenant compte de la distance d'accès à la gare et de la vitesse commerciale de chaque mode : RER ~50 km/h, Métro ~25 km/h, Train ~55 km/h).
+  - `score_transport` : Indice d'accessibilité aux transports (0 à 100).
+
+---
+
+## 8. Fonds de carte – OpenStreetMap
+* **Producteur :** Contributeurs OpenStreetMap
+* **Tuiles cartographiques :** `https://tile.openstreetmap.org/{z}/{x}/{y}.png`
+* **Licence :** ODbL (Open Database License)
+* **API Key :** Aucune clé d'API requise, 100% ouvert et gratuit.

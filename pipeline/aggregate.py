@@ -16,6 +16,7 @@ from pipeline.config import (
 )
 from pipeline.diabetes import get_diabetes_coefficients
 from pipeline.geo import get_all_zones_features, haversine_distance_km
+from pipeline.transport import enrich_zones_with_transit, process_stations, process_lines
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -186,6 +187,14 @@ def build_and_export_data(
             "properties": props,
             "geometry": feat["geometry"],
         })
+
+    # Enrich zones with IDFM public transit network (stations, lines, travel times to Paris)
+    try:
+        stations_features, _ = process_stations()
+        process_lines()
+        enriched_features = enrich_zones_with_transit(enriched_features, stations_features)
+    except Exception as e:
+        logger.warning(f"Transit network enrichment failed: {e}")
 
     zones_geojson = {
         "type": "FeatureCollection",

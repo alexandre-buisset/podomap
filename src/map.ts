@@ -20,17 +20,19 @@ export class MapManager {
     onLoadComplete: () => void
   ) {
     const ml = getMapLibre();
+
+    // 100% Free OpenStreetMap raster tiles with MapLibre font glyphs - NO API KEY REQUIRED
     const mapStyle = {
       version: 8,
+      glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
       sources: {
         'osm-tiles': {
           type: 'raster',
           tiles: [
-            'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           ],
           tileSize: 256,
-          attribution: '&copy; OpenStreetMap contributors, &copy; CARTO',
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
         },
       },
       layers: [
@@ -69,20 +71,29 @@ export class MapManager {
   }
 
   private initLayers(): void {
-    // Empty source for zones
+    // 1. Sources
     this.map.addSource('zones-source', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
       promoteId: 'code_insee',
     });
 
-    // Empty source for podologues
     this.map.addSource('podologues-source', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
     });
 
-    // 1. Zones Fill Choropleth Layer (direct color property computed client-side)
+    this.map.addSource('transports-lignes-source', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
+    this.map.addSource('transports-stations-source', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
+    // 2. Zones Fill Choropleth Layer (direct color property computed client-side)
     this.map.addLayer({
       id: 'zones-fill',
       type: 'fill',
@@ -97,13 +108,13 @@ export class MapManager {
         'fill-opacity': [
           'case',
           ['==', ['get', 'is_excluded'], true],
-          0.35,
-          0.72,
+          0.30,
+          0.68,
         ],
       },
     });
 
-    // 2. Zones Borders Layer
+    // 3. Zones Borders Layer
     this.map.addLayer({
       id: 'zones-borders',
       type: 'line',
@@ -111,17 +122,17 @@ export class MapManager {
       paint: {
         'line-color': '#ffffff',
         'line-width': 1.2,
-        'line-opacity': 0.5,
+        'line-opacity': 0.6,
       },
     });
 
-    // 3. Highlight Border for Selected / Hovered Zone
+    // 4. Highlight Border for Selected / Hovered Zone
     this.map.addLayer({
       id: 'zones-highlight',
       type: 'line',
       source: 'zones-source',
       paint: {
-        'line-color': '#38bdf8',
+        'line-color': '#0284c7',
         'line-width': [
           'case',
           ['==', ['get', 'code_insee'], ''],
@@ -132,7 +143,109 @@ export class MapManager {
       },
     });
 
-    // 4. Podologues Points Layer
+    // 5. Commune Names Labels Layer (crisp text with halo visible over all polygons)
+    this.map.addLayer({
+      id: 'zones-labels',
+      type: 'symbol',
+      source: 'zones-source',
+      minzoom: 10,
+      layout: {
+        'text-field': ['get', 'nom'],
+        'text-font': ['Open Sans Semibold'],
+        'text-size': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 10,
+          12, 11.5,
+          14, 13.5
+        ],
+        'text-anchor': 'center',
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
+        'text-max-width': 8,
+      },
+      paint: {
+        'text-color': '#0f172a',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2.2,
+      },
+    });
+
+    // 6. Public Transit Network Lines (Métro, RER, Train, Tramway)
+    this.map.addLayer({
+      id: 'transports-lignes',
+      type: 'line',
+      source: 'transports-lignes-source',
+      layout: {
+        'visibility': 'visible',
+        'line-cap': 'round',
+        'line-join': 'round',
+      },
+      paint: {
+        'line-color': ['coalesce', ['get', 'color'], '#0284c7'],
+        'line-width': [
+          'interpolate', ['linear'], ['zoom'],
+          9, 1.8,
+          12, 3.2,
+          15, 5.0
+        ],
+        'line-opacity': 0.85,
+      },
+    });
+
+    // 7. Public Transit Stations Circles
+    this.map.addLayer({
+      id: 'transports-stations-circles',
+      type: 'circle',
+      source: 'transports-stations-source',
+      minzoom: 10.5,
+      layout: {
+        'visibility': 'visible',
+      },
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          10.5, 3.5,
+          13, 5.5,
+          16, 7.5
+        ],
+        'circle-color': [
+          'match',
+          ['get', 'mode'],
+          'METRO', '#06b6d4',
+          'RER', '#ef4444',
+          'TRAIN', '#8b5cf6',
+          'TRAMWAY', '#f59e0b',
+          '#3b82f6'
+        ],
+        'circle-stroke-width': 1.8,
+        'circle-stroke-color': '#ffffff',
+        'circle-opacity': 0.95,
+      },
+    });
+
+    // 8. Transit Station Name Labels
+    this.map.addLayer({
+      id: 'transports-stations-labels',
+      type: 'symbol',
+      source: 'transports-stations-source',
+      minzoom: 13,
+      layout: {
+        'visibility': 'visible',
+        'text-field': ['get', 'nom'],
+        'text-font': ['Open Sans Semibold'],
+        'text-size': 11,
+        'text-offset': [0, 1.2],
+        'text-anchor': 'top',
+        'text-max-width': 8,
+      },
+      paint: {
+        'text-color': '#1e293b',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2.0,
+      },
+    });
+
+    // 9. Podologues Practice Locations Points
     this.map.addLayer({
       id: 'podologues-circles',
       type: 'circle',
@@ -142,7 +255,7 @@ export class MapManager {
       },
       paint: {
         'circle-radius': 4.5,
-        'circle-color': '#06b6d4',
+        'circle-color': '#0ea5e9',
         'circle-stroke-width': 1.5,
         'circle-stroke-color': '#ffffff',
         'circle-opacity': 0.9,
@@ -162,15 +275,24 @@ export class MapManager {
       const score = typeof props.score === 'number' ? props.score.toFixed(1) : '-';
       const pop = props.pop_totale ? Number(props.pop_totale).toLocaleString('fr-FR') : '-';
       const isExcluded = props.is_excluded === true || props.is_excluded === 'true';
+      const tempsParis = props.temps_paris_min ? `~${props.temps_paris_min} min vers Paris Châtelet` : '';
+      const gareInfo = props.gare_nom ? `${props.gare_nom} (${props.gare_dist_km} km)` : '';
 
       let html = `<div style="font-family: var(--font-body); padding: 4px 6px;">
-        <strong style="font-size: 0.9rem; color: #0f172a;">${props.nom} (${props.departement})</strong><br/>
+        <strong style="font-size: 0.92rem; color: #0f172a;">${props.nom} (${props.departement})</strong><br/>
         <span style="font-size: 0.78rem; color: #475569;">Population: ${pop} hab.</span><br/>`;
+
+      if (tempsParis) {
+        html += `<span style="font-size: 0.76rem; color: #0284c7; font-weight: 600;">🚆 ${tempsParis}</span><br/>`;
+      }
+      if (gareInfo) {
+        html += `<span style="font-size: 0.74rem; color: #64748b;">🚉 ${gareInfo}</span><br/>`;
+      }
 
       if (isExcluded) {
         html += `<span style="font-size: 0.75rem; color: #dc2626; font-weight: 600;">Zone sous le seuil minimal</span>`;
       } else {
-        html += `<span style="font-size: 0.8rem; color: #059669; font-weight: 700;">Score Opportunité: ${score} / 100</span>`;
+        html += `<span style="font-size: 0.82rem; color: #059669; font-weight: 700;">Score Opportunité: ${score} / 100</span>`;
       }
       html += `</div>`;
 
@@ -211,6 +333,30 @@ export class MapManager {
       this.map.getCanvas().style.cursor = '';
       this.popup.remove();
     });
+
+    // Hover on Public Transit Stations
+    this.map.on('mouseenter', 'transports-stations-circles', (e) => {
+      this.map.getCanvas().style.cursor = 'pointer';
+      if (!e.features || e.features.length === 0) return;
+      const st = e.features[0];
+      const props = st.properties as any;
+      const lignes = props.lignes_str || props.mode;
+      this.popup
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `<div style="font-family: var(--font-body); padding: 4px 6px; font-size: 0.82rem; color: #0f172a;">
+            <strong>🚉 ${props.nom}</strong><br/>
+            <span style="font-size: 0.75rem; color: #0284c7; font-weight: 600;">${props.mode}</span><br/>
+            <span style="font-size: 0.73rem; color: #475569;">${lignes}</span>
+          </div>`
+        )
+        .addTo(this.map);
+    });
+
+    this.map.on('mouseleave', 'transports-stations-circles', () => {
+      this.map.getCanvas().style.cursor = '';
+      this.popup.remove();
+    });
   }
 
   public updateZonesData(geojson: ZonesGeoJSON): void {
@@ -224,9 +370,20 @@ export class MapManager {
   }
 
   public setPodologuesData(geojson: PodologuesGeoJSON): void {
-    const source = this.map.getSource('podologues-source') as maplibregl.GeoJSONSource;
+    const source = this.map.getSource('podologues-source') as any;
     if (source) {
       source.setData(geojson as any);
+    }
+  }
+
+  public setTransportsData(linesGeoJSON: any, stationsGeoJSON: any): void {
+    const lSource = this.map.getSource('transports-lignes-source') as any;
+    if (lSource && linesGeoJSON) {
+      lSource.setData(linesGeoJSON);
+    }
+    const sSource = this.map.getSource('transports-stations-source') as any;
+    if (sSource && stationsGeoJSON) {
+      sSource.setData(stationsGeoJSON);
     }
   }
 
@@ -234,6 +391,29 @@ export class MapManager {
     if (this.map.getLayer('podologues-circles')) {
       this.map.setLayoutProperty(
         'podologues-circles',
+        'visibility',
+        visible ? 'visible' : 'none'
+      );
+    }
+  }
+
+  public setTransportsVisible(visible: boolean): void {
+    const val = visible ? 'visible' : 'none';
+    if (this.map.getLayer('transports-lignes')) {
+      this.map.setLayoutProperty('transports-lignes', 'visibility', val);
+    }
+    if (this.map.getLayer('transports-stations-circles')) {
+      this.map.setLayoutProperty('transports-stations-circles', 'visibility', val);
+    }
+    if (this.map.getLayer('transports-stations-labels')) {
+      this.map.setLayoutProperty('transports-stations-labels', 'visibility', val);
+    }
+  }
+
+  public setCityLabelsVisible(visible: boolean): void {
+    if (this.map.getLayer('zones-labels')) {
+      this.map.setLayoutProperty(
+        'zones-labels',
         'visibility',
         visible ? 'visible' : 'none'
       );
@@ -265,10 +445,12 @@ export class MapManager {
     if (dept === 'all') {
       this.map.setFilter('zones-fill', null);
       this.map.setFilter('zones-borders', null);
+      this.map.setFilter('zones-labels', null);
     } else {
       const filter = ['==', ['get', 'departement'], dept] as any;
       this.map.setFilter('zones-fill', filter);
       this.map.setFilter('zones-borders', filter);
+      this.map.setFilter('zones-labels', filter);
     }
   }
 }

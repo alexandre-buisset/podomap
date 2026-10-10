@@ -93,6 +93,15 @@
             <span class="legend-color-chip chip-excluded"></span>
             <span>Pop. &lt; seuil minimal (zone grisée)</span>
           </div>
+          <div id="legend-transports-chip" class="legend-transports">
+            <span class="legend-mode-dots">
+              <span class="dot-mode dot-metro" title="Métro"></span>
+              <span class="dot-mode dot-rer" title="RER"></span>
+              <span class="dot-mode dot-train" title="Train / Transilien"></span>
+              <span class="dot-mode dot-tram" title="Tramway"></span>
+            </span>
+            <span>Réseau ferré & stations IDFM</span>
+          </div>
           <div id="legend-podologues-chip" class="legend-podologues hidden">
             <span class="legend-color-chip chip-podologue"></span>
             <span>Cabinet de podologie (point)</span>
@@ -240,13 +249,49 @@
             </div>
           </div>
 
-          <!-- Layers Toggle -->
+          <!-- Public Transit Access & Travel Time Filters -->
           <div class="control-group">
-            <label class="toggle-control">
-              <input type="checkbox" id="toggle-podologues-layer" />
+            <div class="control-header">
+              <label class="control-title">🚆 Accès Transports (Temps vers Paris)</label>
+              <span id="val-transit-time-label" class="control-value-pill">Tous</span>
+            </div>
+            <div id="transit-time-btn-group" class="pill-group">
+              <button class="pill-btn active" data-transit-time="0">Tous</button>
+              <button class="pill-btn" data-transit-time="25">&lt; 25 min</button>
+              <button class="pill-btn" data-transit-time="40">&lt; 40 min</button>
+              <button class="pill-btn" data-transit-time="60">&lt; 60 min</button>
+            </div>
+            <p class="control-hint">Filtre les communes selon le temps estimé vers Paris Châtelet en métro, RER ou train.</p>
+
+            <label class="toggle-control mt-sm">
+              <input type="checkbox" id="toggle-require-station" />
               <span class="toggle-slider"></span>
-              <span class="toggle-label">Afficher les cabinets de podologie (points)</span>
+              <span class="toggle-label">Gare / station à proximité (&lt; 1.5 km)</span>
             </label>
+          </div>
+
+          <!-- Layers Display Toggles -->
+          <div class="control-group">
+            <label class="control-title">Affichage des couches</label>
+            <div class="toggles-list">
+              <label class="toggle-control">
+                <input type="checkbox" id="toggle-city-labels" checked />
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Noms des communes sur la carte</span>
+              </label>
+
+              <label class="toggle-control">
+                <input type="checkbox" id="toggle-transports-layer" checked />
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Réseau de transports (Métro / RER / Gares)</span>
+              </label>
+
+              <label class="toggle-control">
+                <input type="checkbox" id="toggle-podologues-layer" />
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Cabinets de podologie existants (points)</span>
+              </label>
+            </div>
           </div>
         </section>
 
@@ -328,6 +373,31 @@
                 </div>
                 <div class="bar-track">
                   <div id="bar-fill-diabete" class="bar-fill fill-amber" style="width: 0%"></div>
+                </div>
+              </div>
+            <!-- Public Transit Accessibility Section -->
+            <div class="sheet-section">
+              <h4 class="section-title">🚆 Dessertes & Transports (IDFM)</h4>
+              <div class="transit-card">
+                <div class="transit-row">
+                  <span class="transit-row-label">⏱️ Temps estimé vers Paris</span>
+                  <span id="m-transit-time" class="transit-time-pill">-</span>
+                </div>
+                <div class="transit-row">
+                  <span class="transit-row-label">🚉 Gare la plus proche</span>
+                  <span id="m-transit-station" class="transit-strong">-</span>
+                </div>
+                <div class="transit-row">
+                  <span class="transit-row-label">📏 Distance</span>
+                  <span id="m-transit-dist" class="transit-text">-</span>
+                </div>
+                <div class="transit-row">
+                  <span class="transit-row-label">🚇 Lignes</span>
+                  <div id="m-transit-lines" class="transit-badges-container">-</div>
+                </div>
+                <div class="transit-row">
+                  <span class="transit-row-label">📍 Gares dans 1.5 km</span>
+                  <span id="m-transit-nb-gares" class="transit-text">-</span>
                 </div>
               </div>
             </div>

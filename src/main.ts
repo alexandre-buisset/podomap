@@ -6,6 +6,8 @@ import { UIManager } from './ui';
 class App {
   private zonesGeoJSON: ZonesGeoJSON | null = null;
   private podologuesGeoJSON: PodologuesGeoJSON | null = null;
+  private stationsGeoJSON: any | null = null;
+  private lignesGeoJSON: any | null = null;
   private mapManager: MapManager | null = null;
   private uiManager: UIManager | null = null;
   private mapReady: boolean = false;
@@ -15,6 +17,10 @@ class App {
     selectedRadiusKm: 2,
     selectedDepartment: 'all',
     showPodologuesLayer: false,
+    showTransportsLayer: true,
+    showCityLabels: true,
+    maxTransitTimeParis: 0,
+    requireTransitStation: false,
   };
   private selectedZone: ZoneFeature | null = null;
 
@@ -37,15 +43,17 @@ class App {
       () => this.onMapReady()
     );
 
-    // 3. Asynchronously fetch GeoJSON data files
+    // 3. Asynchronously fetch GeoJSON data files in parallel
     this.loadData();
   }
 
   private async loadData(): Promise<void> {
     try {
-      const [zonesRes, podRes] = await Promise.all([
+      const [zonesRes, podRes, stationsRes, lignesRes] = await Promise.all([
         fetch('/data/zones.geojson'),
         fetch('/data/podologues.geojson'),
+        fetch('/data/stations.geojson'),
+        fetch('/data/lignes_transport.geojson'),
       ]);
 
       if (!zonesRes.ok || !podRes.ok) {
@@ -54,8 +62,10 @@ class App {
 
       this.zonesGeoJSON = await zonesRes.json();
       this.podologuesGeoJSON = await podRes.json();
+      if (stationsRes.ok) this.stationsGeoJSON = await stationsRes.json();
+      if (lignesRes.ok) this.lignesGeoJSON = await lignesRes.json();
 
-      console.log(`[Podologie IDF] ${this.zonesGeoJSON?.features.length} zones et ${this.podologuesGeoJSON?.features.length} praticiens chargés.`);
+      console.log(`[Podologie IDF] Données chargées : ${this.zonesGeoJSON?.features.length} zones, ${this.podologuesGeoJSON?.features.length} praticiens, ${this.stationsGeoJSON?.features?.length || 0} gares/stations.`);
 
       // If map is already loaded, render immediately
       if (this.mapReady) {
@@ -81,6 +91,13 @@ class App {
       this.mapManager.setPodologuesData(this.podologuesGeoJSON);
     }
 
+    if (this.lignesGeoJSON && this.stationsGeoJSON) {
+      this.mapManager.setTransportsData(this.lignesGeoJSON, this.stationsGeoJSON);
+      this.mapManager.setTransportsVisible(this.currentFilters.showTransportsLayer);
+    }
+
+    this.mapManager.setCityLabelsVisible(this.currentFilters.showCityLabels);
+
     // Run initial score calculation
     this.recalculateAndRender();
 
@@ -97,6 +114,8 @@ class App {
 
     if (this.mapManager) {
       this.mapManager.setPodologuesVisible(this.currentFilters.showPodologuesLayer);
+      this.mapManager.setTransportsVisible(this.currentFilters.showTransportsLayer);
+      this.mapManager.setCityLabelsVisible(this.currentFilters.showCityLabels);
       this.mapManager.filterByDepartment(this.currentFilters.selectedDepartment);
     }
 

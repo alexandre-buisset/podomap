@@ -62,7 +62,22 @@ export function computeOpportunityScores(
 
   features.forEach((feat, idx) => {
     const pop = feat.properties.pop_totale || 0;
-    if (pop >= minPopulation) {
+    const transitTime = feat.properties.temps_paris_min ?? 99;
+    const hasStationNearby = (feat.properties.nb_gares_1_5km || 0) > 0 || (feat.properties.gare_dist_km || 99) <= 1.5;
+
+    let isEligible = pop >= minPopulation;
+    if (filters.maxTransitTimeParis && filters.maxTransitTimeParis > 0) {
+      if (transitTime > filters.maxTransitTimeParis) {
+        isEligible = false;
+      }
+    }
+    if (filters.requireTransitStation) {
+      if (!hasStationNearby) {
+        isEligible = false;
+      }
+    }
+
+    if (isEligible) {
       activeIndices.push(idx);
     } else {
       excludedIndices.push(idx);
@@ -79,16 +94,18 @@ export function computeOpportunityScores(
   let wConcurrence = Math.max(0, weights.concurrence_inv);
   let wDiabete = Math.max(0, weights.coef_diabete);
   let wZonage = hasZonageData ? Math.max(0, weights.bonus_zonage) : 0;
+  let wTransit = Math.max(0, weights.transport_access || 0);
 
-  const baseSum = wDemande + wConcurrence + wDiabete;
+  const baseSum = wDemande + wConcurrence + wDiabete + wTransit;
   if (!hasZonageData && weights.bonus_zonage > 0 && baseSum > 0) {
     const bonusToDistribute = weights.bonus_zonage;
     wDemande += (wDemande / baseSum) * bonusToDistribute;
     wConcurrence += (wConcurrence / baseSum) * bonusToDistribute;
     wDiabete += (wDiabete / baseSum) * bonusToDistribute;
+    if (wTransit > 0) wTransit += (wTransit / baseSum) * bonusToDistribute;
   }
 
-  const totalEffectiveWeight = wDemande + wConcurrence + wDiabete + wZonage;
+  const totalEffectiveWeight = wDemande + wConcurrence + wDiabete + wZonage + wTransit;
 
   // 3. Extract active vectors for percentiles
   const pop65Values = activeIndices.map((idx) => features[idx].properties.pop_65plus || 0);
@@ -97,12 +114,14 @@ export function computeOpportunityScores(
     const p = features[idx].properties as any;
     return typeof p[radiusKey] === 'number' ? p[radiusKey] : p.densite_pour_10k_65plus || 0;
   });
+  const transitValues = activeIndices.map((idx) => features[idx].properties.score_transport ?? 50);
 
   const pctDemande = computePercentiles(pop65Values);
   const pctDiabete = computePercentiles(diabeteValues);
   // Concurrence is inverted: less density = higher score
   const pctDensity = computePercentiles(densityValues);
   const pctConcurrenceInv = pctDensity.map((p) => Math.round((100.0 - p) * 10) / 10);
+  const pctTransit = computePercentiles(transitValues);
 
   // 4. Assign individual criterion percentiles and composite score
   activeIndices.forEach((featIdx, i) => {
@@ -110,6 +129,7 @@ export function computeOpportunityScores(
     const pDemande = pctDemande[i];
     const pConcurrence = pctConcurrenceInv[i];
     const pDiabete = pctDiabete[i];
+    const pTransit = pctTransit[i];
     const zCode = (feat.properties.zonage || '').toLowerCase().trim();
     const pZonage = ZONAGE_SCORES[zCode] ?? 0;
 
@@ -119,7 +139,8 @@ export function computeOpportunityScores(
         (wDemande * pDemande +
           wConcurrence * pConcurrence +
           wDiabete * pDiabete +
-          wZonage * pZonage) /
+          wZonage * pZonage +
+          wTransit * pTransit) /
         totalEffectiveWeight;
     }
 
@@ -129,6 +150,7 @@ export function computeOpportunityScores(
     feat.properties.score_concurrence = pConcurrence;
     feat.properties.score_diabete = pDiabete;
     feat.properties.score_zonage = pZonage;
+    feat.properties.score_transit = pTransit;
     feat.properties.color = getColorForScore(feat.properties.score, false);
   });
 

@@ -22,12 +22,22 @@ export interface ZoneProperties {
   zonage: string;
   centroide_lat: number;
   centroide_lon: number;
+  // Transit accessibility metrics
+  gare_nom?: string;
+  gare_dist_km?: number;
+  gare_mode?: string;
+  gare_lignes?: string[];
+  nb_gares_1_5km?: number;
+  modes_transport?: string[];
+  temps_paris_min?: number;
+  score_transport?: number;
   // Dynamic frontend-computed properties
   score?: number;
   score_demande?: number;
   score_concurrence?: number;
   score_diabete?: number;
   score_zonage?: number;
+  score_transit?: number;
   is_excluded?: boolean;
   rank_global?: number;
   rank_dept?: number;
@@ -72,6 +82,7 @@ export interface ScoreWeights {
   concurrence_inv: number; // default 40
   coef_diabete: number; // default 10
   bonus_zonage: number; // default 15
+  transport_access?: number; // default 0
 }
 
 export interface FilterSettings {
@@ -79,7 +90,11 @@ export interface FilterSettings {
   minPopulation: number; // default 5000
   selectedRadiusKm: number; // 1, 2, or 3
   selectedDepartment: string; // 'all' or '75', '92', etc.
-  showPodologuesLayer: boolean; // default false or true
+  showPodologuesLayer: boolean; // default false
+  showTransportsLayer: boolean; // default true
+  showCityLabels: boolean; // default true
+  maxTransitTimeParis?: number; // 0 = all, 25, 40, 60
+  requireTransitStation?: boolean; // false
 }
 
 export interface Metadata {
