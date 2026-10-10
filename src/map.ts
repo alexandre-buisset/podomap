@@ -13,6 +13,7 @@ function getMapLibre(): any {
 export class MapManager {
   private map: Map;
   private popup: any;
+  private currentRadiusKm: number = 2;
 
   constructor(
     containerId: string,
@@ -309,7 +310,10 @@ export class MapManager {
       const tempsParis = props.temps_paris_min ? `~${props.temps_paris_min} min vers Paris` : '';
       const gareInfo = props.gare_nom ? `${props.gare_nom}` : '';
 
-      const podoRadius = props.nb_podologues_rayon ?? props.nb_podologues_2km ?? 0;
+      const radius = this.currentRadiusKm || 2;
+      const podoRadius = typeof props[`nb_podologues_${radius}km`] === 'number'
+        ? props[`nb_podologues_${radius}km`]
+        : (props.nb_podologues_rayon ?? props.nb_podologues_2km ?? 0);
       const revMedian = props.revenu_median ? `${Number(props.revenu_median).toLocaleString('fr-FR')} €/an` : '-';
       const semellesPrice = props.panier_semelles_estime ? `~${props.panier_semelles_estime} €` : '-';
       const concColor = props.concurrence_color || '#0284c7';
@@ -321,8 +325,9 @@ export class MapManager {
         </div>`;
 
       if (isExcluded) {
-        html += `<div style="padding: 3px 6px; background: #fee2e2; color: #dc2626; border-radius: 4px; font-size: 0.74rem; font-weight: 600; margin-bottom: 6px;">
-          Zone exclue (&lt; seuil minimal population)
+        const reason = props.exclusion_reason || 'Commune non retenue par les filtres actifs';
+        html += `<div style="padding: 3px 6px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.74rem; font-weight: 600; margin-bottom: 6px;">
+          ⚠️ Hors sélection active : ${reason}
         </div>`;
       } else {
         html += `<div style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 3px 8px; border-radius: 4px; margin-bottom: 6px;">
@@ -333,8 +338,8 @@ export class MapManager {
 
       const podosComm = props.nb_podologues || 0;
       const dens10kHab = props.densite_podo_10k_hab !== undefined
-        ? props.densite_podo_10k_hab
-        : (props.pop_totale > 0 ? (Math.round((podosComm / props.pop_totale) * 10000 * 10) / 10) : 0);
+        ? Number(props.densite_podo_10k_hab).toFixed(1)
+        : (props.pop_totale > 0 ? (Math.round((podosComm / props.pop_totale) * 10000 * 10) / 10).toFixed(1) : '0');
       const ratioLabel = props.ratio_hab_label || (podosComm === 0 ? 'Désert (0 cabinet)' : `1 pour ${Math.round(props.pop_totale / podosComm).toLocaleString('fr-FR')} hab.`);
       const ratioColor = props.ratio_hab_color || concColor;
 
@@ -346,7 +351,7 @@ export class MapManager {
         </div>
         <div style="margin-bottom: 3px;">
           <strong>🛡️ Concurrence locale :</strong>
-          <span> ${podoRadius} confrère${podoRadius > 1 ? 's' : ''} à 2 km</span>
+          <span> ${podoRadius} confrère${podoRadius > 1 ? 's' : ''} à ${radius} km</span>
         </div>`;
 
       if (props.has_insee_income === false) {
@@ -378,7 +383,7 @@ export class MapManager {
 
       if (podoRadius >= 20) {
         html += `<div style="margin-top: 5px; padding: 3px 6px; background: #fee2e2; color: #b91c1c; border-radius: 4px; font-weight: 700; font-size: 0.71rem;">
-          ⚠️ Zone saturée (${podoRadius} confrères dans un rayon de 2 km)
+          ⚠️ Zone saturée (${podoRadius} confrères dans un rayon de ${radius} km)
         </div>`;
       } else if (podoRadius <= 2) {
         html += `<div style="margin-top: 5px; padding: 3px 6px; background: #ecfdf5; color: #047857; border-radius: 4px; font-weight: 700; font-size: 0.71rem;">
@@ -530,6 +535,10 @@ export class MapManager {
       essential: true,
       duration: 1200,
     });
+  }
+
+  public setSelectedRadiusKm(radius: number): void {
+    this.currentRadiusKm = radius;
   }
 
   public filterByDepartment(dept: string): void {

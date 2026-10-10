@@ -130,6 +130,7 @@ class App {
     this.currentFilters = { ...newFilters, weights: { ...newFilters.weights } };
 
     if (this.mapManager) {
+      this.mapManager.setSelectedRadiusKm(this.currentFilters.selectedRadiusKm);
       this.mapManager.setPodologuesVisible(this.currentFilters.showPodologuesLayer);
       this.mapManager.setTransportsVisible(this.currentFilters.showTransportsLayer);
       this.mapManager.setCityLabelsVisible(this.currentFilters.showCityLabels);
