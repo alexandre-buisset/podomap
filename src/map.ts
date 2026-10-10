@@ -331,14 +331,22 @@ export class MapManager {
         </div>`;
       }
 
-      const ratioLabel = props.ratio_hab_label || `${podoRadius} podo. à 2km`;
+      const podosComm = props.nb_podologues || 0;
+      const dens10kHab = props.densite_podo_10k_hab !== undefined
+        ? props.densite_podo_10k_hab
+        : (props.pop_totale > 0 ? (Math.round((podosComm / props.pop_totale) * 10000 * 10) / 10) : 0);
+      const ratioLabel = props.ratio_hab_label || (podosComm === 0 ? 'Désert (0 cabinet)' : `1 pour ${Math.round(props.pop_totale / podosComm).toLocaleString('fr-FR')} hab.`);
       const ratioColor = props.ratio_hab_color || concColor;
 
       html += `<div style="font-size: 0.74rem; line-height: 1.5; border-top: 1px solid #e2e8f0; padding-top: 5px;">
         <div style="margin-bottom: 3px;">
-          <strong>🛡️ Concurrence métier :</strong>
+          <strong>👥 Podologues / Habitant :</strong>
           <span style="color: ${ratioColor}; font-weight: 700;"> ${ratioLabel}</span>
-          <span style="color: #64748b;"> • ${podoRadius} à 2km</span>
+          <span style="color: #64748b;"> (${dens10kHab} / 10k hab.)</span>
+        </div>
+        <div style="margin-bottom: 3px;">
+          <strong>🛡️ Concurrence locale :</strong>
+          <span> ${podoRadius} confrère${podoRadius > 1 ? 's' : ''} à 2 km</span>
         </div>`;
 
       if (props.has_insee_income === false) {

@@ -265,26 +265,104 @@ export class UIManager {
 
     // 19. Ratio Habitants par Podologue Filter
     const ratioHabBtns = document.querySelectorAll('#ratio-hab-btn-group .pill-btn');
+    const sliderRatioHab = document.getElementById('slider-ratio-hab') as HTMLInputElement;
+    const valRatioHabSlider = document.getElementById('val-ratio-hab-slider');
+    const toggleDesert = document.getElementById('toggle-only-desert') as HTMLInputElement;
+
+    const syncRatioDisplay = (valNum: number, isDesert: boolean, presetTag: string) => {
+      const lbl = document.getElementById('ratio-hab-val-label');
+      if (lbl) {
+        if (isDesert) {
+          lbl.textContent = '🛡️ 0 cabinet (Désert)';
+        } else if (valNum > 0) {
+          lbl.textContent = `≥ ${valNum.toLocaleString('fr-FR')} hab/podo`;
+        } else {
+          lbl.textContent = 'Tous';
+        }
+      }
+      if (valRatioHabSlider) {
+        valRatioHabSlider.textContent = valNum > 0 ? `≥ ${valNum.toLocaleString('fr-FR')} hab.` : 'Sans seuil';
+      }
+      if (sliderRatioHab) {
+        sliderRatioHab.value = String(valNum);
+        this.updateSliderGauge(sliderRatioHab, '#10b981');
+      }
+      if (toggleDesert) {
+        toggleDesert.checked = isDesert;
+      }
+      ratioHabBtns.forEach((b) => {
+        b.classList.toggle('active', b.getAttribute('data-ratio-hab') === presetTag);
+      });
+    };
+
     ratioHabBtns.forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        ratioHabBtns.forEach((b) => b.classList.remove('active'));
         const target = e.currentTarget as HTMLElement;
-        target.classList.add('active');
         const ratioVal = target.getAttribute('data-ratio-hab') as any;
         this.currentFilters.minRatioHabPodo = ratioVal || 'all';
 
-        const labelMap: Record<string, string> = {
-          all: 'Tous',
-          desert: '🛡️ 0 cabinet (Désert)',
-          '3000': '🟢 ≥ 3 000 hab.',
-          '2500': '⚖️ ≥ 2 500 hab.',
-          '1800': '🟡 ≥ 1 800 hab.',
-        };
-        const lbl = document.getElementById('ratio-hab-val-label');
-        if (lbl) lbl.textContent = labelMap[ratioVal] || 'Tous';
+        if (ratioVal === 'desert') {
+          this.currentFilters.onlyDesertPodo = true;
+          this.currentFilters.minRatioHabPodoNum = 0;
+          syncRatioDisplay(0, true, 'desert');
+        } else if (ratioVal === 'all') {
+          this.currentFilters.onlyDesertPodo = false;
+          this.currentFilters.minRatioHabPodoNum = 0;
+          syncRatioDisplay(0, false, 'all');
+        } else {
+          const num = parseInt(ratioVal, 10);
+          this.currentFilters.onlyDesertPodo = false;
+          this.currentFilters.minRatioHabPodoNum = num;
+          syncRatioDisplay(num, false, ratioVal);
+        }
 
         this.listeners.onFiltersChanged(this.currentFilters);
       });
+    });
+
+    // Slider for Hab / Podo
+    sliderRatioHab?.addEventListener('input', () => {
+      const val = Number(sliderRatioHab.value);
+      this.currentFilters.minRatioHabPodoNum = val;
+      this.currentFilters.onlyDesertPodo = false;
+      if (toggleDesert) toggleDesert.checked = false;
+      this.updateSliderGauge(sliderRatioHab, '#10b981');
+
+      if (valRatioHabSlider) {
+        valRatioHabSlider.textContent = val > 0 ? `≥ ${val.toLocaleString('fr-FR')} hab.` : 'Sans seuil';
+      }
+      const lbl = document.getElementById('ratio-hab-val-label');
+      if (lbl) {
+        lbl.textContent = val > 0 ? `≥ ${val.toLocaleString('fr-FR')} hab/podo` : 'Tous';
+      }
+
+      let matchedPreset = 'custom';
+      if (val === 0) matchedPreset = 'all';
+      else if (val === 3000) matchedPreset = '3000';
+      else if (val === 2500) matchedPreset = '2500';
+      else if (val === 1800) matchedPreset = '1800';
+
+      this.currentFilters.minRatioHabPodo = matchedPreset as any;
+      ratioHabBtns.forEach((b) => {
+        b.classList.toggle('active', b.getAttribute('data-ratio-hab') === matchedPreset);
+      });
+
+      this.listeners.onFiltersChanged(this.currentFilters);
+    });
+
+    // Toggle only desert
+    toggleDesert?.addEventListener('change', () => {
+      this.currentFilters.onlyDesertPodo = toggleDesert.checked;
+      if (toggleDesert.checked) {
+        this.currentFilters.minRatioHabPodo = 'desert';
+        this.currentFilters.minRatioHabPodoNum = 0;
+        syncRatioDisplay(0, true, 'desert');
+      } else {
+        this.currentFilters.minRatioHabPodo = 'all';
+        this.currentFilters.minRatioHabPodoNum = 0;
+        syncRatioDisplay(0, false, 'all');
+      }
+      this.listeners.onFiltersChanged(this.currentFilters);
     });
 
     // 20. Max Competition in Radius Filter
@@ -603,6 +681,14 @@ export class UIManager {
     }
 
     switch (criterion) {
+      case 'ratio_podo_hab':
+        if (titleEl) titleEl.textContent = '👥 Ratio Podologues / Habitant';
+        if (rangeEl) rangeEl.textContent = 'Saturation ➔ Pénurie';
+        if (lbl1) lbl1.textContent = '< 1 200 hab';
+        if (lbl2) lbl2.textContent = '1 800 hab';
+        if (lbl3) lbl3.textContent = '2 500 hab (Ordre)';
+        if (lbl4) lbl4.textContent = '≥ 3 500 / 0 podo';
+        break;
       case 'concurrence':
         if (titleEl) titleEl.textContent = '🛡️ Pression Concurrentielle';
         if (rangeEl) rangeEl.textContent = 'Saturation ➔ Désert';
@@ -651,6 +737,10 @@ export class UIManager {
     const titleEl = document.getElementById('ranking-panel-title');
     const subEl = document.getElementById('ranking-panel-subtitle');
     switch (criterion) {
+      case 'ratio_podo_hab':
+        if (titleEl) titleEl.textContent = '👥 Top 10 - Plus Forte Pénurie / Habitant';
+        if (subEl) subEl.textContent = 'Communes avec le plus grand nombre d\'habitants par podologue (déserts)';
+        break;
       case 'concurrence':
         if (titleEl) titleEl.textContent = '🛡️ Top 10 - Moins de Concurrence';
         if (subEl) subEl.textContent = 'Déserts podologiques (le plus faible ratio confrères / senior)';
@@ -706,7 +796,17 @@ export class UIManager {
       let pillColor = '';
       let pillBadgeHtml = '';
 
-      if (criterion === 'concurrence') {
+      if (criterion === 'ratio_podo_hab') {
+        const podosComm = p.nb_podologues || 0;
+        const ratioHab = p.ratio_hab_par_podo || p.pop_totale;
+        const dens10k = p.densite_podo_10k_hab !== undefined ? p.densite_podo_10k_hab : (p.pop_totale > 0 ? ((podosComm / p.pop_totale) * 10000).toFixed(1) : '0');
+        pillScore = podosComm === 0 ? 'Désert' : `1/${ratioHab >= 1000 ? (Math.round(ratioHab / 100) / 10) + 'k' : ratioHab}`;
+        pillColor = p.ratio_hab_color || '#10b981';
+        pillBadgeHtml = `
+          <span class="ranking-pill-badge" style="color: ${p.ratio_hab_color || '#10b981'}; background: ${p.ratio_hab_color || '#10b981'}18; border-color: ${p.ratio_hab_color || '#10b981'}45;">
+            ${podosComm === 0 ? '🛡️ 0 cabinet communal' : `👥 1 podo / ${ratioHab.toLocaleString('fr-FR')} hab.`} • ${dens10k} podo/10k
+          </span>`;
+      } else if (criterion === 'concurrence') {
         pillScore = `${density.toFixed(1)} /10k`;
         pillColor = concColor;
         pillBadgeHtml = `
@@ -961,6 +1061,15 @@ export class UIManager {
         elRatio.style.color = p.ratio_hab_color;
       }
     }
+
+    const podosComm = p.nb_podologues || 0;
+    const dens10kHab = p.densite_podo_10k_hab !== undefined
+      ? p.densite_podo_10k_hab
+      : (p.pop_totale > 0 ? (Math.round((podosComm / p.pop_totale) * 10000 * 10) / 10) : 0);
+    setVal(
+      'm-density-10k-hab',
+      `${Number(dens10kHab).toFixed(1)} podo. / 10 000 hab. (${podosComm === 0 ? 'Désert communal' : (dens10kHab < 2.0 ? 'Pénurie' : (dens10kHab > 3.5 ? 'Saturé' : 'Équilibré'))})`
+    );
 
     setVal('m-density-senior', `${Number(densityInRadius).toFixed(2)} podo. / 10k seniors`);
     setVal('m-diabete-prev', `${p.prevalence_diabete ?? '-'} % (coef. ${p.coef_diabete ?? 1.0})`);

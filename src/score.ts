@@ -92,10 +92,20 @@ export function computeOpportunityScores(
       : feat.properties.nb_podologues_rayon || 0;
     const ratioCommune = podosCommune === 0 ? pop : Math.round(pop / podosCommune);
 
+    // Practitioner density metrics (standard health demography)
+    feat.properties.densite_podo_10k_hab = pop > 0 ? Math.round((podosCommune / pop) * 10000 * 10) / 10 : 0;
+    feat.properties.densite_podo_100k_hab = pop > 0 ? Math.round((podosCommune / pop) * 100000) : 0;
+
     let isEligible = pop >= minPopulation;
 
     // Filter by practitioner ratio (Habitants par Podologue)
-    if (filters.minRatioHabPodo && filters.minRatioHabPodo !== 'all') {
+    if (filters.onlyDesertPodo) {
+      if (podosCommune > 0) isEligible = false;
+    } else if (filters.minRatioHabPodoNum && filters.minRatioHabPodoNum > 0) {
+      if (podosCommune > 0 && ratioCommune < filters.minRatioHabPodoNum) {
+        isEligible = false;
+      }
+    } else if (filters.minRatioHabPodo && filters.minRatioHabPodo !== 'all') {
       if (filters.minRatioHabPodo === 'desert') {
         if (podosCommune > 0) isEligible = false;
       } else {
@@ -329,6 +339,9 @@ export function computeOpportunityScores(
       case 'concurrence':
         feat.properties.color = getColorForConcurrence(pConcurrence, false);
         break;
+      case 'ratio_podo_hab':
+        feat.properties.color = getColorForRatioPodoHab(podosCommune, ratioHabPodo, podosInRadius, false);
+        break;
       case 'pouvoir_achat':
         feat.properties.color = getColorForPouvoirAchat(pPouvoirAchat, false);
         break;
@@ -356,7 +369,7 @@ export function computeOpportunityScores(
     feat.properties.score_diabete = 0;
     feat.properties.score_zonage = 0;
     feat.properties.concurrence_niveau = 'saturee';
-    feat.properties.concurrence_label = 'Exclue (< seuil pop)';
+    feat.properties.concurrence_label = 'Exclue par les filtres actifs';
     feat.properties.color = getColorForScore(0, true);
     feat.properties.rank_global = undefined;
     feat.properties.rank_dept = undefined;
@@ -407,6 +420,8 @@ export function getTop10Zones(
     switch (displayCriterion) {
       case 'concurrence':
         return (b.properties.score_concurrence || 0) - (a.properties.score_concurrence || 0);
+      case 'ratio_podo_hab':
+        return (b.properties.ratio_hab_par_podo || 0) - (a.properties.ratio_hab_par_podo || 0);
       case 'pouvoir_achat':
         return (b.properties.score_pouvoir_achat || 0) - (a.properties.score_pouvoir_achat || 0);
       case 'seniors':
@@ -446,6 +461,30 @@ export function getColorForConcurrence(percentile: number, isExcluded: boolean =
   if (percentile >= 25) return '#0284c7'; // Concurrence modérée (Bleu)
   if (percentile >= 10) return '#f59e0b'; // Concurrence soutenue (Ambre)
   return '#ef4444'; // Forte saturation (Rouge)
+}
+
+/**
+ * Podologues / Habitant color scale:
+ * Émeraude = 0 podo (Désert local absolu) ou >= 3 500 hab/podo (< 2.8 / 10k hab)
+ * Teal = 2 500 à 3 500 hab/podo (Favorable / Seuil de rentabilité Ordre)
+ * Bleu = 1 800 à 2 500 hab/podo (Modéré)
+ * Ambre = 1 200 à 1 800 hab/podo (Concurrence soutenue)
+ * Rouge = < 1 200 hab/podo ou >= 20 podologues à 2 km (Saturé)
+ */
+export function getColorForRatioPodoHab(
+  podosCommune: number,
+  ratioHabPodo: number,
+  podosInRadius: number = 0,
+  isExcluded: boolean = false
+): string {
+  if (isExcluded) return '#94a3b8';
+  if (podosInRadius >= 20) return '#ef4444'; // Saturated neighborhood overrides
+  if (podosCommune === 0) return '#10b981'; // Désert communal absolu
+  if (ratioHabPodo >= 3500) return '#10b981'; // Très favorable
+  if (ratioHabPodo >= 2500) return '#0d9488'; // Favorable (Seuil Ordre)
+  if (ratioHabPodo >= 1800) return '#0284c7'; // Modéré
+  if (ratioHabPodo >= 1200) return '#f59e0b'; // Concurrence soutenue
+  return '#ef4444'; // Saturé
 }
 
 /**

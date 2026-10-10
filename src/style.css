@@ -1246,6 +1246,10 @@ html, body {
   background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #0284c7 50%, #0d9488 75%, #10b981 100%);
 }
 
+.legend-gradient-bar.gradient-ratio_podo_hab {
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #0284c7 50%, #0d9488 75%, #10b981 100%);
+}
+
 .legend-gradient-bar.gradient-pouvoir_achat {
   background: linear-gradient(90deg, #64748b 0%, #0284c7 35%, #10b981 65%, #f59e0b 100%);
 }

@@ -62,6 +62,8 @@ export interface ZoneProperties {
   revenu_source?: string;
   qualite_donnees?: string;
   ratio_hab_commune?: number;
+  densite_podo_10k_hab?: number;
+  densite_podo_100k_hab?: number;
   color?: string;
 }
 
@@ -99,7 +101,7 @@ export interface PodologuesGeoJSON {
 
 export type StrategyPreset = 'semelles' | 'equilibre' | 'medical' | 'custom';
 
-export type MapDisplayCriterion = 'score_global' | 'concurrence' | 'pouvoir_achat' | 'seniors' | 'transports';
+export type MapDisplayCriterion = 'score_global' | 'concurrence' | 'ratio_podo_hab' | 'pouvoir_achat' | 'seniors' | 'transports';
 
 export interface ScoreWeights {
   pouvoir_achat_semelles: number; // default 30 (Revenu disponible & solvabilité semelles)
@@ -114,7 +116,7 @@ export interface FilterSettings {
   weights: ScoreWeights;
   activePreset: StrategyPreset;
   displayCriterion: MapDisplayCriterion; // default 'score_global'
-  minPopulation: number; // default 5000
+  minPopulation: number; // default 2500
   selectedRadiusKm: number; // 1, 2, or 3
   selectedDepartment: string; // 'all' or '75', '92', etc.
   showPodologuesLayer: boolean; // default false
@@ -122,7 +124,9 @@ export interface FilterSettings {
   showCityLabels: boolean; // default true
   maxTransitTimeParis?: number; // 0 = all, 25, 40, 60
   requireTransitStation?: boolean; // false
-  minRatioHabPodo?: 'all' | 'desert' | '3000' | '2500' | '1800'; // filter by practitioner ratio
+  minRatioHabPodo?: 'all' | 'desert' | '3000' | '2500' | '1800'; // filter preset
+  minRatioHabPodoNum?: number; // slider value: 0 = tous, or 1000 - 8000
+  onlyDesertPodo?: boolean; // checkbox: true = 0 podo only
   maxConcurrencePodos?: number; // 0 = all, or 0, 1, 2, 5, 10 max podos in radius
 }
 

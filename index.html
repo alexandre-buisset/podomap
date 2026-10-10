@@ -84,6 +84,9 @@
             <button class="mode-pill active" data-criterion="score_global" title="Score synthétique selon le profil et les pondérations">
               🌟 Score Global
             </button>
+            <button class="mode-pill" data-criterion="ratio_podo_hab" title="Ratio podologues / habitants : vert = désert ou forte pénurie, rouge = saturation">
+              👥 Podos / Habitant
+            </button>
             <button class="mode-pill" data-criterion="concurrence" title="Pression concurrentielle : vert = désert/peu de confrères, rouge = saturation">
               🛡️ Concurrence
             </button>
@@ -240,17 +243,35 @@
           <!-- Ratio Podologue par Habitant Filter -->
           <div class="control-group">
             <div class="control-header">
-              <label class="control-title">🛡️ Ratio Métier (Habitants / Podologue)</label>
+              <label class="control-title">👥 Podologues / Habitant (Filtre Pénurie)</label>
               <span id="ratio-hab-val-label" class="control-value-pill">Tous</span>
             </div>
             <div id="ratio-hab-btn-group" class="pill-group">
               <button class="pill-btn active" data-ratio-hab="all">Tous</button>
-              <button class="pill-btn" data-ratio-hab="desert" title="Uniquement les communes avec 0 podologue">🛡️ 0 cabinet (Désert)</button>
-              <button class="pill-btn" data-ratio-hab="3000" title="Au moins 1 podologue pour 3 000 hab.">🟢 &ge; 3 000 hab/podo</button>
-              <button class="pill-btn" data-ratio-hab="2500" title="Au moins 1 podologue pour 2 500 hab. (seuil recommandé Ordre)">⚖️ &ge; 2 500 hab/podo</button>
+              <button class="pill-btn" data-ratio-hab="desert" title="Communes sans aucun cabinet communal (0 podologue)">🛡️ 0 cabinet (Désert)</button>
+              <button class="pill-btn" data-ratio-hab="3000" title="Au moins 1 podologue pour 3 000 hab. (Forte pénurie)">🟢 &ge; 3 000 hab/podo</button>
+              <button class="pill-btn" data-ratio-hab="2500" title="Au moins 1 podologue pour 2 500 hab. (seuil recommandé Ordre ONPP)">⚖️ &ge; 2 500 hab/podo</button>
               <button class="pill-btn" data-ratio-hab="1800" title="Au moins 1 podologue pour 1 800 hab.">🟡 &ge; 1 800 hab/podo</button>
             </div>
-            <p class="control-hint">Filtre strict selon le critère métier : isole les communes respectant votre seuil d'habitants par praticien communal.</p>
+
+            <!-- Continuous Slider for Custom Hab / Podo Threshold -->
+            <div class="slider-item mt-xs">
+              <div class="slider-label-row">
+                <span class="slider-name">Seuil personnalisé hab. / podo</span>
+                <span id="val-ratio-hab-slider" class="slider-val">Sans seuil</span>
+              </div>
+              <input type="range" id="slider-ratio-hab" min="0" max="6000" step="250" value="0" class="slider-input" />
+              <p class="slider-subtext">0 = Tous | Filtre dynamiquement les zones ayant au moins X habitants par praticien communal.</p>
+            </div>
+
+            <!-- Desert checkbox -->
+            <label class="toggle-control mt-xs">
+              <input type="checkbox" id="toggle-only-desert" />
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">🛡️ Déserts podologiques stricts uniquement (0 cabinet)</span>
+            </label>
+
+            <p class="control-hint">Filtre strict selon le critère métier : isole les communes en sous-densité médicale et élimine les secteurs sur-dotés.</p>
           </div>
 
           <!-- Max Competition in Radius Filter -->
@@ -611,6 +632,10 @@
                     <td id="m-ratio-hab-podo" class="metric-val highlight" style="font-weight: 700;">-</td>
                   </tr>
                   <tr>
+                    <td>Densité podologues / 10 000 hab.</td>
+                    <td id="m-density-10k-hab" class="metric-val highlight">-</td>
+                  </tr>
+                  <tr>
                     <td>Densité / 10 000 seniors</td>
                     <td id="m-density-senior" class="metric-val highlight">-</td>
                   </tr>
@@ -673,6 +698,8 @@
                   </div>
                   <div class="bm-gauge-bar"><div id="bm-fill-transit" class="bm-fill"></div></div>
                 </div>
+              </div>
+            </div>
             <!-- Data Reliability & Transparency Section -->
             <div class="sheet-section">
               <h4 class="section-title">🔍 Fiabilité & Origine des Données</h4>
