@@ -30,7 +30,7 @@ API_ADRESSE_CSV_URL = "https://api-adresse.data.gouv.fr/search/csv/"
 FILOSOFI_INCOME_CSV_URL = "https://static.data.gouv.fr/resources/revenu-des-francais-a-la-commune/20251210-134014/revenu-des-francais-a-la-commune-1765372688826.csv"
 
 # Geocoding thresholds
-MIN_GEOCODE_SCORE = 0.50
+MIN_GEOCODE_SCORE = 0.45
 
 # Spatial buffers (in kilometers)
 RADII_KM = [1, 2, 3]
