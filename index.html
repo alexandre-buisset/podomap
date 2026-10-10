@@ -602,11 +602,34 @@
               </div>
             </div>
 
+            <!-- Multi-Neighborhood / Large City Analysis Section -->
+            <div class="sheet-section hidden" id="sheet-large-city-section">
+              <h4 class="section-title">🏙️ Analyse par Quartier & Pôles de Transport (Grande Ville)</h4>
+              <div class="large-city-card" id="large-city-card">
+                <div class="large-city-header">
+                  <span class="badge-large-city">Grande Ville Polycentrique</span>
+                  <span id="large-city-stats" class="large-city-stats">-</span>
+                </div>
+                <div class="large-city-alert-box">
+                  <p class="large-city-explanation">
+                    <strong>⚠️ Limite du rayon de 2 km sur une grande ville :</strong> Avec une envergure de plus de 4 km, la ville compte plusieurs bassins de vie distincts. Un rayon centré sur la mairie tronque les quartiers périphériques. <strong>Votre opportunité dépend du pôle d'implantation choisi :</strong>
+                  </p>
+                </div>
+                <div class="poles-list" id="large-city-poles-list">
+                  <!-- Dynamically populated poles -->
+                </div>
+              </div>
+            </div>
+
             <!-- Raw Data Table -->
             <div class="sheet-section">
               <h4 class="section-title">Données Brutes & Ratios</h4>
               <table class="metrics-table">
                 <tbody>
+                  <tr>
+                    <td>Superficie & Envergure territoriale</td>
+                    <td id="m-superficie-span" class="metric-val highlight">-</td>
+                  </tr>
                   <tr>
                     <td>Population totale</td>
                     <td id="m-pop-totale" class="metric-val">-</td>

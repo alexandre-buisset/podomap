@@ -64,6 +64,20 @@ export interface ZoneProperties {
   ratio_hab_commune?: number;
   densite_podo_10k_hab?: number;
   densite_podo_100k_hab?: number;
+  diametre_territoire_km?: number;
+  superficie_km2?: number;
+  is_grande_ville?: boolean;
+  poles_quartiers?: Array<{
+    nom: string;
+    mode: string;
+    type: string;
+    lat: number;
+    lon: number;
+    podos_1km: number;
+    diagnostic: string;
+    color: string;
+    status: string;
+  }>;
   color?: string;
 }
 

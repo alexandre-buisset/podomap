@@ -1801,6 +1801,106 @@ html, body {
   line-height: 1.45;
 }
 
+/* Multi-Neighborhood / Large City Styles */
+.large-city-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-top: 6px;
+}
+
+.large-city-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.badge-large-city {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  color: #38bdf8;
+  font-size: 0.73rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.large-city-stats {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.large-city-alert-box {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid #f59e0b;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+
+.large-city-explanation {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: #fde68a;
+  margin: 0;
+}
+
+.poles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pole-item-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.pole-item-card:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.pole-info-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pole-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.pole-diag-badge {
+  font-size: 0.71rem;
+  font-weight: 600;
+}
+
+.pole-count-pill {
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* Print / Export Styles for Installation Dossier */
 @media print {
   header, #sidebar-tabs, #panel-controls, #panel-ranking, .map-floating-bar, .legend-box, #btn-toggle-sidebar {

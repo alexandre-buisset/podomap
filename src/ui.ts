@@ -1039,6 +1039,37 @@ export class UIManager {
       }
     }
 
+    // Multi-Neighborhood Breakdown for Large Polycentric Cities
+    const elLargeCitySection = document.getElementById('sheet-large-city-section');
+    const elLargeCityStats = document.getElementById('large-city-stats');
+    const elPolesList = document.getElementById('large-city-poles-list');
+
+    if (p.is_grande_ville && p.poles_quartiers && p.poles_quartiers.length > 0) {
+      if (elLargeCitySection) elLargeCitySection.classList.remove('hidden');
+      if (elLargeCityStats) {
+        elLargeCityStats.textContent = `${p.superficie_km2 || '-'} km² • Envergure : ~${p.diametre_territoire_km || '-'} km`;
+      }
+      if (elPolesList) {
+        elPolesList.innerHTML = '';
+        p.poles_quartiers.forEach((pole: any) => {
+          const item = document.createElement('div');
+          item.className = 'pole-item-card';
+          item.innerHTML = `
+            <div class="pole-info-left">
+              <span class="pole-name">${pole.nom}</span>
+              <span class="pole-diag-badge" style="color: ${pole.color};">${pole.diagnostic}</span>
+            </div>
+            <div class="pole-count-pill" style="color: ${pole.color}; background: ${pole.color}18; border: 1px solid ${pole.color}45;">
+              ${pole.podos_1km} podo à 1km
+            </div>
+          `;
+          elPolesList.appendChild(item);
+        });
+      }
+    } else {
+      if (elLargeCitySection) elLargeCitySection.classList.add('hidden');
+    }
+
     // Metrics Table
     const podoInRadius = p[`nb_podologues_${radius}km`] ?? p.nb_podologues_rayon ?? 0;
     const densityInRadius = p[`densite_10k_65plus_${radius}km`] ?? p.densite_pour_10k_65plus ?? 0;
@@ -1048,6 +1079,7 @@ export class UIManager {
       if (el) el.textContent = val;
     };
 
+    setVal('m-superficie-span', p.superficie_km2 ? `${p.superficie_km2} km² (Envergure: ~${p.diametre_territoire_km} km)` : '-');
     setVal('m-pop-totale', `${Number(p.pop_totale || 0).toLocaleString('fr-FR')} hab.`);
     setVal('m-pop-65plus', `${Number(p.pop_65plus || 0).toLocaleString('fr-FR')} hab.`);
     setVal('m-part-65plus', `${((p.part_65plus || 0) * 100).toFixed(1)} %`);

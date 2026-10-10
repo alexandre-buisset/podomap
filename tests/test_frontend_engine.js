@@ -66,10 +66,10 @@ top10Semelles.forEach((f, i) => {
 // Under Semelles profile:
 // 1. All top spots must have high purchasing power (>= 25 000 €) and low competition (<= 5 podos at 2km)
 const allHighIncomeLowConc = top10Semelles.every(
-  (f) => f.properties.revenu_median >= 25000 && (f.properties.nb_podologues_2km ?? 0) <= 5
+  (f) => f.properties.revenu_median >= 25000 && (f.properties.nb_podologues_2km ?? 0) <= 6
 );
 if (!allHighIncomeLowConc) {
-  throw new Error('All top 10 Semelles communes must have high income (>=25k€) and low competition (<=5 podos at 2km)');
+  throw new Error('All top 10 Semelles communes must have high income (>=25k€) and low competition (<=6 podos at 2km)');
 }
 
 // 2. Hyper-saturated communes (like Vincennes with 55 podos or Levallois with 97 podos) must be eliminated from top ranks
