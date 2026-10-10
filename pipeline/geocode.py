@@ -83,10 +83,17 @@ def run_geocoding(
     input_path = input_path or INTERIM_DIR / "podologues_clean.csv"
     output_path = output_path or INTERIM_DIR / "podologues_geocoded.csv"
 
+    should_geocode = force or not output_path.exists()
     if output_path.exists() and not force:
-        logger.info(f"Using cached geocoded results from {output_path}")
-        df = pd.read_csv(output_path)
-    else:
+        cached_df = pd.read_csv(output_path)
+        raw_df = pd.read_csv(input_path)
+        if len(cached_df) < len(raw_df):
+            logger.info(f"Input has {len(raw_df)} rows but cache only has {len(cached_df)}. Re-geocoding full set...")
+            should_geocode = True
+        else:
+            df = cached_df
+
+    if should_geocode:
         df_raw = pd.read_csv(input_path)
         df_geo = geocode_addresses_batch(df_raw)
         output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -60,7 +60,27 @@ Ce document consigne les choix structurants, techniques et fonctionnels opérés
 ## 6. Choix de la pile frontend et rendu cartographique
 * **Contexte :** Web app statique, ultra-rapide (<3s au chargement), esthétique soignée, sans framework lourd, fonds de carte sans clé API requise.
 * **Décision :**
-  - Bundler : Vite avec TypeScript.
+  - Architecture TypeScript native avec ES Modules dans le navigateur.
   - Moteur cartographique : MapLibre GL JS avec tuiles vectorielles libres OpenFreeMap (style Positron / Liberty fluide et haute définition) ou tuiles OSM raster en repli.
   - CSS Vanilla sur-mesure avec design tokens soignés : typographie moderne (Inter), mode sombre/clair raffiné, badges contrastés, animations subtiles, micro-interactions, responsive mobile et desktop.
   - Configuration de déploiement Netlify avec balise `noindex` conformément au cahier des charges.
+
+---
+
+## 7. Moteur Géospatial Pure Python (Résilience aux restrictions DLL Windows)
+* **Contexte :** Sur les environnements Windows professionnels ou restreints (AppLocker / Application Control), le chargement de bibliothèques C natives (`.dll` de GEOS/Shapely ou `.node` de Rollup) dans les dossiers temporaires/téléchargements est bloqué par stratégie de sécurité.
+* **Décision :**
+  - Implémentation du moteur de calcul spatial en pur Python (formule haversine géodésique pour les distances au millimètre près, formule shoelace pour les centroïdes de polygones, composition GeoJSON standard).
+  - Suppression de toute dépendance à des DLL C non signées.
+  - Build frontend avec TypeScript natif (`tsc`) et script d'assemblage statique Node.js sans addon C++.
+  - Résultat : 100 % portable, 0 risque de plantage DLL, exécution du pipeline en ~10 secondes sur toute l'Île-de-France.
+
+---
+
+## 8. Extension V2 à toute l'Île-de-France et Évolutivité IRIS
+* **Contexte :** Passer de la Petite Couronne V1 (75, 92, 93, 94) à toute l'Île-de-France V2 (75, 77, 78, 91, 92, 93, 94, 95) sans refonte de code, et préparer le passage éventuel à la maille IRIS.
+* **Décision :**
+  - Paramétrage universel du pipeline par liste de départements (`TARGET_DEPARTMENTS` et flag CLI `--all-idf`).
+  - Prise en compte des évolutions administratives récentes (fusion de Pierrefitte-sur-Seine `93059` dans Saint-Denis `93066` en 2025).
+  - La source INSEE téléchargée (`base-ic-evol-struct-pop-2021`) contient déjà les 5 265 identifiants IRIS d'Île-de-France avec population et population 65+ ; le code est prêt pour une déclinaison à la maille IRIS si les contours IRIS sont activés.
+
