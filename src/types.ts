@@ -56,6 +56,12 @@ export interface ZoneProperties {
   rank_global?: number;
   rank_dept?: number;
   total_in_dept?: number;
+  // Data reliability & transparency flags
+  has_insee_income?: boolean;
+  fiabilite_revenu?: string;
+  revenu_source?: string;
+  qualite_donnees?: string;
+  ratio_hab_commune?: number;
   color?: string;
 }
 
@@ -116,6 +122,8 @@ export interface FilterSettings {
   showCityLabels: boolean; // default true
   maxTransitTimeParis?: number; // 0 = all, 25, 40, 60
   requireTransitStation?: boolean; // false
+  minRatioHabPodo?: 'all' | 'desert' | '3000' | '2500' | '1800'; // filter by practitioner ratio
+  maxConcurrencePodos?: number; // 0 = all, or 0, 1, 2, 5, 10 max podos in radius
 }
 
 export interface Metadata {

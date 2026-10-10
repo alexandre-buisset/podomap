@@ -1747,3 +1747,80 @@ html, body {
   }
 }
 
+/* Data Reliability Card & Transparency */
+.reliability-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.reliability-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.77rem;
+}
+
+.reliability-row:last-of-type {
+  border-bottom: none;
+}
+
+.rel-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.rel-status {
+  font-weight: 600;
+  font-size: 0.76rem;
+}
+
+.rel-status.text-emerald {
+  color: #34d399;
+}
+
+.rel-status.text-amber {
+  color: #fbbf24;
+}
+
+.reliability-note {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(14, 165, 233, 0.08);
+  border-left: 3px solid #0ea5e9;
+  border-radius: var(--radius-sm);
+  color: #bae6fd;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+/* Print / Export Styles for Installation Dossier */
+@media print {
+  header, #sidebar-tabs, #panel-controls, #panel-ranking, .map-floating-bar, .legend-box, #btn-toggle-sidebar {
+    display: none !important;
+  }
+  body, #main-content, #sidebar {
+    background: #ffffff !important;
+    color: #000000 !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  #sidebar {
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+  }
+  .zone-sheet {
+    display: block !important;
+    color: #111827 !important;
+  }
+  .glass-card {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+  }
+}
+

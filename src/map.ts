@@ -339,13 +339,22 @@ export class MapManager {
           <strong>🛡️ Concurrence métier :</strong>
           <span style="color: ${ratioColor}; font-weight: 700;"> ${ratioLabel}</span>
           <span style="color: #64748b;"> • ${podoRadius} à 2km</span>
-        </div>
-        <div style="margin-bottom: 3px;">
+        </div>`;
+
+      if (props.has_insee_income === false) {
+        html += `<div style="margin-bottom: 3px;">
+          <strong>💎 Revenu disponible :</strong>
+          <span style="color: #64748b; font-style: italic;"> Non diffusé INSEE (&lt; 150 hab)</span>
+        </div>`;
+      } else {
+        html += `<div style="margin-bottom: 3px;">
           <strong>💎 Pouvoir d'achat :</strong>
           <span> ${revMedian}</span>
           <span style="color: #d97706; font-weight: 600;"> (Semelles: ${semellesPrice})</span>
-        </div>
-        <div style="margin-bottom: 3px;">
+        </div>`;
+      }
+
+      html += `<div style="margin-bottom: 3px;">
           <strong>👥 Demande Seniors :</strong>
           <span> ${pop65} hab.</span>
           <span style="color: #64748b;"> (${part65} % des ${pop} hab.)</span>

@@ -23,6 +23,8 @@ class App {
     showCityLabels: true,
     maxTransitTimeParis: 0,
     requireTransitStation: false,
+    minRatioHabPodo: 'all',
+    maxConcurrencePodos: -1,
   };
   private selectedZone: ZoneFeature | null = null;
 

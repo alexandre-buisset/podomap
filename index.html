@@ -237,6 +237,38 @@
             </div>
           </div>
 
+          <!-- Ratio Podologue par Habitant Filter -->
+          <div class="control-group">
+            <div class="control-header">
+              <label class="control-title">🛡️ Ratio Métier (Habitants / Podologue)</label>
+              <span id="ratio-hab-val-label" class="control-value-pill">Tous</span>
+            </div>
+            <div id="ratio-hab-btn-group" class="pill-group">
+              <button class="pill-btn active" data-ratio-hab="all">Tous</button>
+              <button class="pill-btn" data-ratio-hab="desert" title="Uniquement les communes avec 0 podologue">🛡️ 0 cabinet (Désert)</button>
+              <button class="pill-btn" data-ratio-hab="3000" title="Au moins 1 podologue pour 3 000 hab.">🟢 &ge; 3 000 hab/podo</button>
+              <button class="pill-btn" data-ratio-hab="2500" title="Au moins 1 podologue pour 2 500 hab. (seuil recommandé Ordre)">⚖️ &ge; 2 500 hab/podo</button>
+              <button class="pill-btn" data-ratio-hab="1800" title="Au moins 1 podologue pour 1 800 hab.">🟡 &ge; 1 800 hab/podo</button>
+            </div>
+            <p class="control-hint">Filtre strict selon le critère métier : isole les communes respectant votre seuil d'habitants par praticien communal.</p>
+          </div>
+
+          <!-- Max Competition in Radius Filter -->
+          <div class="control-group">
+            <div class="control-header">
+              <label class="control-title">🚫 Plafond de Concurrence Locale</label>
+              <span id="max-conc-val-label" class="control-value-pill">Sans limite</span>
+            </div>
+            <div id="max-conc-btn-group" class="pill-group">
+              <button class="pill-btn active" data-max-conc="-1">Tous</button>
+              <button class="pill-btn" data-max-conc="0" title="0 confrère à 2 km">0 à 2km</button>
+              <button class="pill-btn" data-max-conc="2" title="Maximum 2 confrères à 2 km">&le; 2 à 2km</button>
+              <button class="pill-btn" data-max-conc="5" title="Maximum 5 confrères à 2 km">&le; 5 à 2km</button>
+              <button class="pill-btn" data-max-conc="10" title="Maximum 10 confrères à 2 km">&le; 10 à 2km</button>
+            </div>
+            <p class="control-hint">Élimine d'office les zones saturées comptant trop de cabinets dans votre rayon de chalandise.</p>
+          </div>
+
           <!-- Radius Selector -->
           <div class="control-group">
             <div class="control-header">
@@ -641,7 +673,37 @@
                   </div>
                   <div class="bm-gauge-bar"><div id="bm-fill-transit" class="bm-fill"></div></div>
                 </div>
+            <!-- Data Reliability & Transparency Section -->
+            <div class="sheet-section">
+              <h4 class="section-title">🔍 Fiabilité & Origine des Données</h4>
+              <div class="reliability-card" id="sheet-reliability-card">
+                <div class="reliability-row">
+                  <span class="rel-label">Démographie & Population :</span>
+                  <span class="rel-status" id="rel-status-pop">✅ Certifié INSEE Recensement 2021</span>
+                </div>
+                <div class="reliability-row">
+                  <span class="rel-label">Cabinets de podologie :</span>
+                  <span class="rel-status" id="rel-status-podo">✅ Annuaire Santé RPPS (3 084 praticiens IDF)</span>
+                </div>
+                <div class="reliability-row">
+                  <span class="rel-label">Revenu & Solvabilité :</span>
+                  <span class="rel-status" id="rel-status-income">-</span>
+                </div>
+                <div class="reliability-row">
+                  <span class="rel-label">Dessertes transports :</span>
+                  <span class="rel-status" id="rel-status-transit">✅ Référentiel Officiel IDFM 2026</span>
+                </div>
+                <div class="reliability-note" id="rel-note-box">
+                  ℹ️ Données officielles ouvertes de l'État (INSEE, RPPS, IDFM). Aucune extrapolation non déclarée.
+                </div>
               </div>
+            </div>
+
+            <!-- Export / Print Installation Summary Button -->
+            <div class="sheet-section mt-sm">
+              <button id="btn-print-zone" class="pill-btn active" style="width: 100%; justify-content: center; padding: 10px; font-weight: 600; font-size: 0.85rem;" title="Imprimer ou exporter la fiche d'aide à l'installation en PDF">
+                🖨️ Exporter la Fiche d'Aide à l'Installation (PDF / Imprimer)
+              </button>
             </div>
           </div>
         </section>

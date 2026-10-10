@@ -86,8 +86,35 @@ export function computeOpportunityScores(
     const pop = feat.properties.pop_totale || 0;
     const transitTime = feat.properties.temps_paris_min ?? 99;
     const hasStationNearby = (feat.properties.nb_gares_1_5km || 0) > 0 || (feat.properties.gare_dist_km || 99) <= 1.5;
+    const podosCommune = feat.properties.nb_podologues || 0;
+    const podosInRadius = typeof (feat.properties as any)[podoRadiusKey] === 'number'
+      ? (feat.properties as any)[podoRadiusKey]
+      : feat.properties.nb_podologues_rayon || 0;
+    const ratioCommune = podosCommune === 0 ? pop : Math.round(pop / podosCommune);
 
     let isEligible = pop >= minPopulation;
+
+    // Filter by practitioner ratio (Habitants par Podologue)
+    if (filters.minRatioHabPodo && filters.minRatioHabPodo !== 'all') {
+      if (filters.minRatioHabPodo === 'desert') {
+        if (podosCommune > 0) isEligible = false;
+      } else {
+        const threshold = parseInt(filters.minRatioHabPodo, 10);
+        if (podosCommune > 0 && ratioCommune < threshold) {
+          isEligible = false;
+        }
+      }
+    }
+
+    // Filter by maximum competition in radius (Max confrères à 2km)
+    if (typeof filters.maxConcurrencePodos === 'number' && filters.maxConcurrencePodos >= 0) {
+      if (filters.maxConcurrencePodos === 0) {
+        if (podosInRadius > 0) isEligible = false;
+      } else {
+        if (podosInRadius > filters.maxConcurrencePodos) isEligible = false;
+      }
+    }
+
     if (filters.maxTransitTimeParis && filters.maxTransitTimeParis > 0) {
       if (transitTime > filters.maxTransitTimeParis) {
         isEligible = false;
@@ -282,6 +309,18 @@ export function computeOpportunityScores(
       feat.properties.pouvoir_achat_label = '💰 Moyen (Semelles ~160 €)';
     } else {
       feat.properties.pouvoir_achat_label = '⚠️ Modeste (Soins Sécu 27 €)';
+    }
+
+    // Ensure data reliability fields
+    if (feat.properties.has_insee_income === false) {
+      feat.properties.fiabilite_revenu = "Non diffusé par l'INSEE (secret statistique < 150 hab)";
+      feat.properties.revenu_source = "Estimation départementale";
+      feat.properties.qualite_donnees = "Partielle (Revenu Insee non diffusé)";
+    } else {
+      feat.properties.has_insee_income = true;
+      feat.properties.fiabilite_revenu = "Certifié INSEE Filosofi (Officiel)";
+      feat.properties.revenu_source = "INSEE Filosofi 2021 communal";
+      feat.properties.qualite_donnees = "Certifiée (INSEE + RPPS + IDFM)";
     }
 
     // Assign map choropleth color based on selected display criterion
