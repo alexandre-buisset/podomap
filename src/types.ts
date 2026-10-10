@@ -53,6 +53,7 @@ export interface ZoneProperties {
   ratio_hab_color?: string;
   pouvoir_achat_label?: string;
   is_excluded?: boolean;
+  exclusion_reason?: string;
   rank_global?: number;
   rank_dept?: number;
   total_in_dept?: number;

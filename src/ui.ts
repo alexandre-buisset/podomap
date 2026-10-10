@@ -495,7 +495,7 @@ export class UIManager {
   }
 
   public initSearch(
-    features: ZoneFeature[],
+    featuresProvider: ZoneFeature[] | (() => ZoneFeature[]),
     onZoneSelect: (zone: ZoneFeature) => void
   ): void {
     const input = document.getElementById('global-zone-search') as HTMLInputElement;
@@ -521,6 +521,7 @@ export class UIManager {
         return;
       }
 
+      const features = typeof featuresProvider === 'function' ? featuresProvider() : featuresProvider;
       const matches = features
         .filter((f) => {
           const nom = normalize(f.properties.nom || '');
@@ -901,10 +902,10 @@ export class UIManager {
     if (elDept) elDept.textContent = `Dép. ${p.departement}`;
     if (elInsee) elInsee.textContent = `Code INSEE : ${p.code_insee}`;
 
-    const score = p.is_excluded ? 0 : p.score || 0;
-    if (elScoreVal) elScoreVal.textContent = p.is_excluded ? 'Exclue' : score.toFixed(1);
+    const score = Number(p.score) || 0;
+    if (elScoreVal) elScoreVal.textContent = p.is_excluded ? `${score.toFixed(1)}*` : score.toFixed(1);
 
-    const scoreColor = getColorForScore(score, p.is_excluded);
+    const scoreColor = p.is_excluded ? '#94a3b8' : getColorForScore(score, false);
     if (elScoreCircle) {
       elScoreCircle.style.borderColor = scoreColor;
       elScoreCircle.style.background = `radial-gradient(circle closest-side, rgba(15, 23, 42, 0.95) 70%, transparent 72%), conic-gradient(${scoreColor} ${score}%, rgba(255, 255, 255, 0.1) 0)`;
@@ -916,10 +917,13 @@ export class UIManager {
     const elRankText = document.getElementById('sheet-rank-text');
     if (elRankBanner && elRankText) {
       if (p.is_excluded) {
-        elRankBanner.classList.add('hidden');
+        elRankBanner.classList.remove('hidden');
+        elRankBanner.className = 'rank-banner rank-banner-excluded';
+        elRankText.innerHTML = `⚠️ <strong>Hors sélection active :</strong> ${p.exclusion_reason || 'Commune non retenue par les filtres actuels'}`;
       } else {
         elRankBanner.classList.remove('hidden');
-        elRankText.textContent = `Rang départemental : ${p.rank_dept || '-'}${p.rank_dept === 1 ? 'er' : 'e'} sur ${p.total_in_dept || '-'} (${p.rank_global ? `Rang IDF: ${p.rank_global}e` : ''})`;
+        elRankBanner.className = 'rank-banner';
+        elRankText.innerHTML = `🏆 Rang départemental : <strong>${p.rank_dept || '-'}${p.rank_dept === 1 ? 'er' : 'e'}</strong> sur ${p.total_in_dept || '-'} (${p.rank_global ? `Rang IDF: ${p.rank_global}e` : ''})`;
       }
     }
 
@@ -1026,14 +1030,23 @@ export class UIManager {
     }
     if (elTransitLines) {
       elTransitLines.innerHTML = '';
-      const lignes = p.gare_lignes || [];
+      let lignes = p.gare_lignes;
+      if (typeof lignes === 'string') {
+        try {
+          lignes = JSON.parse(lignes);
+        } catch {
+          lignes = [];
+        }
+      }
+      if (!Array.isArray(lignes)) lignes = [];
+
       if (lignes.length === 0) {
         elTransitLines.textContent = p.gare_mode || 'Réseau bus';
       } else {
         lignes.forEach((lig: string) => {
           const badge = document.createElement('span');
           badge.className = `badge-transit-line mode-${p.gare_mode || 'TRAIN'}`;
-          badge.textContent = lig;
+          badge.textContent = String(lig);
           elTransitLines.appendChild(badge);
         });
       }
@@ -1044,23 +1057,35 @@ export class UIManager {
     const elLargeCityStats = document.getElementById('large-city-stats');
     const elPolesList = document.getElementById('large-city-poles-list');
 
-    if (p.is_grande_ville && p.poles_quartiers && p.poles_quartiers.length > 0) {
+    let poles = p.poles_quartiers;
+    if (typeof poles === 'string') {
+      try {
+        poles = JSON.parse(poles);
+      } catch {
+        poles = [];
+      }
+    }
+    if (!Array.isArray(poles)) poles = [];
+
+    const isGrandeVille = (p.is_grande_ville === true || p.is_grande_ville === 'true') && poles.length > 0;
+    if (isGrandeVille) {
       if (elLargeCitySection) elLargeCitySection.classList.remove('hidden');
       if (elLargeCityStats) {
         elLargeCityStats.textContent = `${p.superficie_km2 || '-'} km² • Envergure : ~${p.diametre_territoire_km || '-'} km`;
       }
       if (elPolesList) {
         elPolesList.innerHTML = '';
-        p.poles_quartiers.forEach((pole: any) => {
+        poles.forEach((pole: any) => {
           const item = document.createElement('div');
           item.className = 'pole-item-card';
+          const pColor = pole.color || '#10b981';
           item.innerHTML = `
             <div class="pole-info-left">
-              <span class="pole-name">${pole.nom}</span>
-              <span class="pole-diag-badge" style="color: ${pole.color};">${pole.diagnostic}</span>
+              <span class="pole-name">${pole.nom || 'Pôle'}</span>
+              <span class="pole-diag-badge" style="color: ${pColor};">${pole.diagnostic || ''}</span>
             </div>
-            <div class="pole-count-pill" style="color: ${pole.color}; background: ${pole.color}18; border: 1px solid ${pole.color}45;">
-              ${pole.podos_1km} podo à 1km
+            <div class="pole-count-pill" style="color: ${pColor}; background: ${pColor}18; border: 1px solid ${pColor}45;">
+              ${pole.podos_1km ?? 0} podo à 1km
             </div>
           `;
           elPolesList.appendChild(item);
@@ -1071,8 +1096,18 @@ export class UIManager {
     }
 
     // Metrics Table
-    const podoInRadius = p[`nb_podologues_${radius}km`] ?? p.nb_podologues_rayon ?? 0;
-    const densityInRadius = p[`densite_10k_65plus_${radius}km`] ?? p.densite_pour_10k_65plus ?? 0;
+    const podosComm = Number(p.nb_podologues) || 0;
+    const popTotale = Number(p.pop_totale) || 0;
+    const pop65plus = Number(p.pop_65plus) || 0;
+    const part65plus = Number(p.part_65plus) || 0;
+
+    const podoInRadius = typeof p[`nb_podologues_${radius}km`] === 'number'
+      ? p[`nb_podologues_${radius}km`]
+      : (typeof p.nb_podologues_rayon === 'number' ? p.nb_podologues_rayon : 0);
+
+    const densityInRadius = typeof p[`densite_10k_65plus_${radius}km`] === 'number'
+      ? p[`densite_10k_65plus_${radius}km`]
+      : (typeof p.densite_pour_10k_65plus === 'number' ? p.densite_pour_10k_65plus : 0);
 
     const setVal = (id: string, val: string) => {
       const el = document.getElementById(id);
@@ -1080,27 +1115,28 @@ export class UIManager {
     };
 
     setVal('m-superficie-span', p.superficie_km2 ? `${p.superficie_km2} km² (Envergure: ~${p.diametre_territoire_km} km)` : '-');
-    setVal('m-pop-totale', `${Number(p.pop_totale || 0).toLocaleString('fr-FR')} hab.`);
-    setVal('m-pop-65plus', `${Number(p.pop_65plus || 0).toLocaleString('fr-FR')} hab.`);
-    setVal('m-part-65plus', `${((p.part_65plus || 0) * 100).toFixed(1)} %`);
-    setVal('m-podo-zone', `${p.nb_podologues || 0}`);
+    setVal('m-pop-totale', `${popTotale.toLocaleString('fr-FR')} hab.`);
+    setVal('m-pop-65plus', `${pop65plus.toLocaleString('fr-FR')} hab.`);
+    setVal('m-part-65plus', `${(part65plus * 100).toFixed(1)} %`);
+    setVal('m-podo-zone', `${podosComm}`);
     setVal('m-podo-radius', `${podoInRadius}`);
 
     const elRatio = document.getElementById('m-ratio-hab-podo');
     if (elRatio) {
-      elRatio.textContent = p.ratio_hab_label || (p.nb_podologues === 0 ? `🛡️ 0 podologue (${Number(p.pop_totale || 0).toLocaleString('fr-FR')} hab.)` : `1 pour ${Math.round((p.pop_totale || 0) / (p.nb_podologues || 1)).toLocaleString('fr-FR')} hab.`);
-      if (p.ratio_hab_color) {
-        elRatio.style.color = p.ratio_hab_color;
+      if (podosComm === 0) {
+        elRatio.textContent = `🛡️ 0 cabinet local (${popTotale.toLocaleString('fr-FR')} hab. sans praticien)`;
+        elRatio.style.color = '#10b981';
+      } else {
+        const ratioCalculated = Math.round(popTotale / podosComm);
+        elRatio.textContent = p.ratio_hab_label || `1 pour ${ratioCalculated.toLocaleString('fr-FR')} hab.`;
+        elRatio.style.color = p.ratio_hab_color || '#10b981';
       }
     }
 
-    const podosComm = p.nb_podologues || 0;
-    const dens10kHab = p.densite_podo_10k_hab !== undefined
-      ? p.densite_podo_10k_hab
-      : (p.pop_totale > 0 ? (Math.round((podosComm / p.pop_totale) * 10000 * 10) / 10) : 0);
+    const dens10kHab = popTotale > 0 ? (Math.round((podosComm / popTotale) * 10000 * 10) / 10) : 0;
     setVal(
       'm-density-10k-hab',
-      `${Number(dens10kHab).toFixed(1)} podo. / 10 000 hab. (${podosComm === 0 ? 'Désert communal' : (dens10kHab < 2.0 ? 'Pénurie' : (dens10kHab > 3.5 ? 'Saturé' : 'Équilibré'))})`
+      `${dens10kHab.toFixed(1)} podo. / 10 000 hab. (${podosComm === 0 ? 'Désert communal' : (dens10kHab < 2.0 ? 'Pénurie' : (dens10kHab > 3.5 ? 'Saturé' : 'Équilibré'))})`
     );
 
     setVal('m-density-senior', `${Number(densityInRadius).toFixed(2)} podo. / 10k seniors`);

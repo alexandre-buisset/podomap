@@ -892,6 +892,12 @@ html, body {
   margin-bottom: 16px;
 }
 
+.rank-banner.rank-banner-excluded {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #94a3b8;
+}
+
 .sheet-section {
   margin-bottom: 18px;
 }

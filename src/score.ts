@@ -69,6 +69,28 @@ export function computePercentiles(values: number[]): number[] {
 }
 
 /**
+ * Compute percentile for a single value against a sorted reference array.
+ */
+export function computePercentileForValue(val: number, sortedAsc: number[]): number {
+  const n = sortedAsc.length;
+  if (n <= 1) return 50;
+  let i = 0;
+  while (i < n && sortedAsc[i] < val) {
+    i++;
+  }
+  let j = i;
+  while (j < n && sortedAsc[j] === val) {
+    j++;
+  }
+  if (j > i) {
+    const avgRank = (i + (j - 1)) / 2.0;
+    return Math.round(((avgRank / (n - 1)) * 100.0) * 10) / 10;
+  }
+  const rank = Math.min(n - 1, i);
+  return Math.round(((rank / (n - 1)) * 100.0) * 10) / 10;
+}
+
+/**
  * Calculate opportunity score for all features based on active filter settings.
  */
 export function computeOpportunityScores(
@@ -78,9 +100,10 @@ export function computeOpportunityScores(
   const { weights, minPopulation, selectedRadiusKm } = filters;
   const podoRadiusKey = `nb_podologues_${selectedRadiusKm}km` as const;
 
-  // 1. Identify active (non-excluded) features
+  // 1. Identify eligibility and exclusion reasons for all features
   const activeIndices: number[] = [];
   const excludedIndices: number[] = [];
+  const exclusionMap: Map<number, string[]> = new Map();
 
   features.forEach((feat, idx) => {
     const pop = feat.properties.pop_totale || 0;
@@ -96,55 +119,67 @@ export function computeOpportunityScores(
     feat.properties.densite_podo_10k_hab = pop > 0 ? Math.round((podosCommune / pop) * 10000 * 10) / 10 : 0;
     feat.properties.densite_podo_100k_hab = pop > 0 ? Math.round((podosCommune / pop) * 100000) : 0;
 
-    let isEligible = pop >= minPopulation;
+    const reasons: string[] = [];
+    if (pop < minPopulation) {
+      reasons.push(`Population < ${minPopulation.toLocaleString('fr-FR')} hab.`);
+    }
 
     // Filter by practitioner ratio (Habitants par Podologue)
     if (filters.onlyDesertPodo) {
-      if (podosCommune > 0) isEligible = false;
+      if (podosCommune > 0) {
+        reasons.push(`Présence de ${podosCommune} podologue(s)`);
+      }
     } else if (filters.minRatioHabPodoNum && filters.minRatioHabPodoNum > 0) {
       if (podosCommune > 0 && ratioCommune < filters.minRatioHabPodoNum) {
-        isEligible = false;
+        reasons.push(`Ratio ${ratioCommune.toLocaleString('fr-FR')} hab/podo < ${filters.minRatioHabPodoNum.toLocaleString('fr-FR')}`);
       }
     } else if (filters.minRatioHabPodo && filters.minRatioHabPodo !== 'all') {
       if (filters.minRatioHabPodo === 'desert') {
-        if (podosCommune > 0) isEligible = false;
+        if (podosCommune > 0) reasons.push(`Présence de ${podosCommune} cabinet(s)`);
       } else {
         const threshold = parseInt(filters.minRatioHabPodo, 10);
         if (podosCommune > 0 && ratioCommune < threshold) {
-          isEligible = false;
+          reasons.push(`Ratio < ${threshold.toLocaleString('fr-FR')} hab/podo`);
         }
       }
     }
 
     // Filter by maximum competition in radius (Max confrères à 2km)
     if (typeof filters.maxConcurrencePodos === 'number' && filters.maxConcurrencePodos >= 0) {
-      if (filters.maxConcurrencePodos === 0) {
-        if (podosInRadius > 0) isEligible = false;
-      } else {
-        if (podosInRadius > filters.maxConcurrencePodos) isEligible = false;
+      if (podosInRadius > filters.maxConcurrencePodos) {
+        reasons.push(`Concurrence (${podosInRadius}) > max autorisé (${filters.maxConcurrencePodos})`);
       }
     }
 
     if (filters.maxTransitTimeParis && filters.maxTransitTimeParis > 0) {
       if (transitTime > filters.maxTransitTimeParis) {
-        isEligible = false;
+        reasons.push(`Temps vers Paris (${transitTime} min) > max (${filters.maxTransitTimeParis} min)`);
       }
     }
     if (filters.requireTransitStation) {
       if (!hasStationNearby) {
-        isEligible = false;
+        reasons.push(`Pas de gare ferrée dans 1.5 km`);
+      }
+    }
+    if (filters.selectedDepartment && filters.selectedDepartment !== 'all') {
+      if (feat.properties.departement !== filters.selectedDepartment) {
+        reasons.push(`Hors département sélectionné (Dép. ${filters.selectedDepartment})`);
       }
     }
 
-    if (isEligible) {
-      activeIndices.push(idx);
-    } else {
+    if (reasons.length > 0) {
+      exclusionMap.set(idx, reasons);
       excludedIndices.push(idx);
+    } else {
+      activeIndices.push(idx);
     }
   });
 
-  // Check if any active feature has non-empty zonage
-  const hasZonageData = activeIndices.some(
+  // Candidate pool for benchmark distribution (fall back to all features if candidate pool too small)
+  const candidateIndices = activeIndices.length >= 20 ? activeIndices : features.map((_, i) => i);
+
+  // Check if any candidate feature has non-empty zonage
+  const hasZonageData = candidateIndices.some(
     (idx) => (features[idx].properties.zonage || '').trim().length > 0
   );
 
@@ -168,42 +203,51 @@ export function computeOpportunityScores(
 
   const totalEffectiveWeight = wPouvoirAchat + wDemande + wConcurrence + wDiabete + wZonage + wTransit;
 
-  // 3. Extract active vectors for percentiles
-  const incomeValues = activeIndices.map((idx) => features[idx].properties.potentiel_semelles ?? 50);
-  const pop65Values = activeIndices.map((idx) => features[idx].properties.pop_65plus || 0);
-  const diabeteValues = activeIndices.map((idx) => features[idx].properties.coef_diabete || 1.0);
-  const densityValues = activeIndices.map((idx) => {
-    const p = features[idx].properties as any;
-    const podos = typeof p[podoRadiusKey] === 'number' ? p[podoRadiusKey] : p.nb_podologues_rayon || 0;
-    const pop = Math.max(1, p.pop_totale || 1);
-    return (podos / pop) * 10000.0;
-  });
-  const transitValues = activeIndices.map((idx) => features[idx].properties.score_transport ?? 50);
+  // 3. Extract and sort benchmark vectors from the candidate pool
+  const sortedIncomes = candidateIndices
+    .map((idx) => features[idx].properties.potentiel_semelles ?? 50)
+    .sort((a, b) => a - b);
 
-  const pctPouvoirAchat = computePercentiles(incomeValues);
-  const pctDemande = computePercentiles(pop65Values);
-  const pctDiabete = computePercentiles(diabeteValues);
-  // Concurrence is inverted: less density = higher score
-  const pctDensity = computePercentiles(densityValues);
-  const pctConcurrenceInv = pctDensity.map((p) => Math.round((100.0 - p) * 10) / 10);
-  const pctTransit = computePercentiles(transitValues);
+  const sortedPop65 = candidateIndices
+    .map((idx) => features[idx].properties.pop_65plus || 0)
+    .sort((a, b) => a - b);
 
-  // 4. Assign individual criterion percentiles and composite score
-  activeIndices.forEach((featIdx, i) => {
-    const feat = features[featIdx];
-    const pPouvoirAchat = pctPouvoirAchat[i];
-    const pDemande = pctDemande[i];
-    const pConcurrence = pctConcurrenceInv[i];
-    const pDiabete = pctDiabete[i];
-    const pTransit = pctTransit[i];
-    const zCode = (feat.properties.zonage || '').toLowerCase().trim();
-    const pZonage = ZONAGE_SCORES[zCode] ?? 0;
+  const sortedDiabete = candidateIndices
+    .map((idx) => features[idx].properties.coef_diabete || 1.0)
+    .sort((a, b) => a - b);
 
-    const podosInRadius = typeof (feat.properties as any)[podoRadiusKey] === 'number'
-      ? (feat.properties as any)[podoRadiusKey]
+  const sortedDensity = candidateIndices
+    .map((idx) => {
+      const p = features[idx].properties as any;
+      const podos = typeof p[podoRadiusKey] === 'number' ? p[podoRadiusKey] : p.nb_podologues_rayon || 0;
+      const pop = Math.max(1, p.pop_totale || 1);
+      return (podos / pop) * 10000.0;
+    })
+    .sort((a, b) => a - b);
+
+  const sortedTransit = candidateIndices
+    .map((idx) => features[idx].properties.score_transport ?? 50)
+    .sort((a, b) => a - b);
+
+  // 4. Assign individual criterion percentiles and composite score to ALL features
+  features.forEach((feat, i) => {
+    const pProp = feat.properties as any;
+    const podosInRadius = typeof pProp[podoRadiusKey] === 'number'
+      ? pProp[podoRadiusKey]
       : feat.properties.nb_podologues_rayon || 0;
     const popCommune = feat.properties.pop_totale || 1;
     const podosCommune = feat.properties.nb_podologues || 0;
+
+    const pPouvoirAchat = computePercentileForValue(feat.properties.potentiel_semelles ?? 50, sortedIncomes);
+    const pDemande = computePercentileForValue(feat.properties.pop_65plus || 0, sortedPop65);
+    const pDiabete = computePercentileForValue(feat.properties.coef_diabete || 1.0, sortedDiabete);
+    const densityVal = (podosInRadius / Math.max(1, popCommune)) * 10000.0;
+    const pDensity = computePercentileForValue(densityVal, sortedDensity);
+    const pConcurrence = Math.round((100.0 - pDensity) * 10) / 10;
+    const pTransit = computePercentileForValue(feat.properties.score_transport ?? 50, sortedTransit);
+
+    const zCode = (feat.properties.zonage || '').toLowerCase().trim();
+    const pZonage = ZONAGE_SCORES[zCode] ?? 0;
 
     // Métier Ratio: 1 podologue pour X habitants (idéal 1 pour 2 500 à 3 000 hab cité par la podologue)
     let ratioHabPodo = 0;
@@ -241,13 +285,11 @@ export function computeOpportunityScores(
     feat.properties.ratio_hab_par_podo = ratioHabPodo;
 
     // Saturation Penalty / Gatekeeper:
-    // Évite formellement l'anomalie où des villes saturées (comme Vincennes avec 55 podologues, Nogent/Le Perreux avec 26)
-    // apparaissaient en vert / top opportunité uniquement grâce à leur revenu élevé !
     let saturationMultiplier = 1.0;
     if (podosInRadius >= 35) {
-      saturationMultiplier = 0.20; // Saturation extrême (Vincennes 55 podos, Saint-Mandé 76 podos, Levallois 97 podos)
+      saturationMultiplier = 0.20; // Saturation extrême (Vincennes 55, Saint-Mandé 76)
     } else if (podosInRadius >= 20) {
-      saturationMultiplier = 0.32; // Forte saturation avérée (Nogent 26 podos, Le Perreux 26 podos, Saint-Maur 32 podos)
+      saturationMultiplier = 0.32; // Forte saturation avérée (Nogent 26, Saint-Maur 32)
     } else if (podosInRadius >= 12) {
       saturationMultiplier = 0.55; // Saturation modérée
     } else if (podosInRadius >= 8) {
@@ -274,7 +316,6 @@ export function computeOpportunityScores(
 
     const finalScore = Math.max(0, Math.min(100, Math.round(composite * saturationMultiplier * 10) / 10));
 
-    feat.properties.is_excluded = false;
     feat.properties.score = finalScore;
     feat.properties.score_pouvoir_achat = pPouvoirAchat;
     feat.properties.score_demande = pDemande;
@@ -333,46 +374,42 @@ export function computeOpportunityScores(
       feat.properties.qualite_donnees = "Certifiée (INSEE + RPPS + IDFM)";
     }
 
-    // Assign map choropleth color based on selected display criterion
-    const criterion = filters.displayCriterion || 'score_global';
-    switch (criterion) {
-      case 'concurrence':
-        feat.properties.color = getColorForConcurrence(pConcurrence, false);
-        break;
-      case 'ratio_podo_hab':
-        feat.properties.color = getColorForRatioPodoHab(podosCommune, ratioHabPodo, podosInRadius, false);
-        break;
-      case 'pouvoir_achat':
-        feat.properties.color = getColorForPouvoirAchat(pPouvoirAchat, false);
-        break;
-      case 'seniors':
-        feat.properties.color = getColorForSeniors(pDemande, false);
-        break;
-      case 'transports':
-        feat.properties.color = getColorForTransports(pTransit, false);
-        break;
-      case 'score_global':
-      default:
-        feat.properties.color = getColorForScore(feat.properties.score, false);
-        break;
-    }
-  });
+    // Handle Active vs Excluded State
+    const reasons = exclusionMap.get(i);
+    if (reasons && reasons.length > 0) {
+      feat.properties.is_excluded = true;
+      feat.properties.exclusion_reason = reasons.join(' • ');
+      feat.properties.color = getColorForScore(0, true);
+      feat.properties.rank_global = undefined;
+      feat.properties.rank_dept = undefined;
+    } else {
+      feat.properties.is_excluded = false;
+      feat.properties.exclusion_reason = undefined;
 
-  // 5. Excluded features
-  excludedIndices.forEach((featIdx) => {
-    const feat = features[featIdx];
-    feat.properties.is_excluded = true;
-    feat.properties.score = 0;
-    feat.properties.score_demande = 0;
-    feat.properties.score_concurrence = 0;
-    feat.properties.score_pouvoir_achat = 0;
-    feat.properties.score_diabete = 0;
-    feat.properties.score_zonage = 0;
-    feat.properties.concurrence_niveau = 'saturee';
-    feat.properties.concurrence_label = 'Exclue par les filtres actifs';
-    feat.properties.color = getColorForScore(0, true);
-    feat.properties.rank_global = undefined;
-    feat.properties.rank_dept = undefined;
+      // Assign map choropleth color based on selected display criterion
+      const criterion = filters.displayCriterion || 'score_global';
+      switch (criterion) {
+        case 'concurrence':
+          feat.properties.color = getColorForConcurrence(pConcurrence, false);
+          break;
+        case 'ratio_podo_hab':
+          feat.properties.color = getColorForRatioPodoHab(podosCommune, ratioHabPodo, podosInRadius, false);
+          break;
+        case 'pouvoir_achat':
+          feat.properties.color = getColorForPouvoirAchat(pPouvoirAchat, false);
+          break;
+        case 'seniors':
+          feat.properties.color = getColorForSeniors(pDemande, false);
+          break;
+        case 'transports':
+          feat.properties.color = getColorForTransports(pTransit, false);
+          break;
+        case 'score_global':
+        default:
+          feat.properties.color = getColorForScore(finalScore, false);
+          break;
+      }
+    }
   });
 
   // 6. Compute ranks among active features

@@ -117,10 +117,13 @@ class App {
       this.uiManager?.renderZoneDetail(top10[0], false);
     }
 
-    // Initialize instant search autocomplete
-    this.uiManager?.initSearch(this.zonesGeoJSON.features, (zone) => {
-      this.handleZoneSelected(zone, true);
-    });
+    // Initialize instant search autocomplete with dynamic features provider
+    this.uiManager?.initSearch(
+      () => this.zonesGeoJSON?.features || [],
+      (zone) => {
+        this.handleZoneSelected(zone, true);
+      }
+    );
   }
 
   private handleFiltersChanged(newFilters: FilterSettings): void {
@@ -175,17 +178,25 @@ class App {
   }
 
   private handleZoneSelected(zone: ZoneFeature, flyTo: boolean): void {
-    this.selectedZone = zone;
+    if (!zone || !zone.properties) return;
+    const inseeCode = zone.properties.code_insee;
+    // Always resolve the master in-memory feature with complete typed properties
+    const masterZone =
+      this.zonesGeoJSON?.features.find(
+        (f) => f.properties.code_insee === inseeCode
+      ) || zone;
+
+    this.selectedZone = masterZone;
     if (this.uiManager) {
       // User explicitly clicked a zone: switch to detail tab
-      this.uiManager.renderZoneDetail(zone, true);
+      this.uiManager.renderZoneDetail(masterZone, true);
     }
 
     if (this.mapManager) {
-      this.mapManager.setSelectedZone(zone.properties.code_insee);
+      this.mapManager.setSelectedZone(inseeCode);
       if (flyTo) {
-        const cLon = zone.properties.centroide_lon;
-        const cLat = zone.properties.centroide_lat;
+        const cLon = masterZone.properties.centroide_lon;
+        const cLat = masterZone.properties.centroide_lat;
         if (cLon && cLat) {
           this.mapManager.flyTo(cLon, cLat, 13);
         }
