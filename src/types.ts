@@ -32,6 +32,7 @@ export interface ZoneProperties {
   rank_global?: number;
   rank_dept?: number;
   total_in_dept?: number;
+  color?: string;
 }
 
 export interface ZoneFeature {

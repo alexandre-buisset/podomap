@@ -129,6 +129,7 @@ export function computeOpportunityScores(
     feat.properties.score_concurrence = pConcurrence;
     feat.properties.score_diabete = pDiabete;
     feat.properties.score_zonage = pZonage;
+    feat.properties.color = getColorForScore(feat.properties.score, false);
   });
 
   // 5. Excluded features
@@ -140,6 +141,7 @@ export function computeOpportunityScores(
     feat.properties.score_concurrence = 0;
     feat.properties.score_diabete = 0;
     feat.properties.score_zonage = 0;
+    feat.properties.color = getColorForScore(0, true);
     feat.properties.rank_global = undefined;
     feat.properties.rank_dept = undefined;
   });

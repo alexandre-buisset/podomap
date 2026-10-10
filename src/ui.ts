@@ -97,6 +97,7 @@ export class UIManager {
       this.currentFilters.minPopulation = val;
       const label = document.getElementById('val-min-pop');
       if (label) label.textContent = `${val.toLocaleString('fr-FR')} hab.`;
+      this.updateSliderGauge(sliderMinPop, '#06b6d4');
       this.listeners.onFiltersChanged(this.currentFilters);
     });
 
@@ -147,6 +148,15 @@ export class UIManager {
     });
   }
 
+  private updateSliderGauge(slider: HTMLInputElement | null, color: string): void {
+    if (!slider) return;
+    const val = Number(slider.value);
+    const min = Number(slider.min) || 0;
+    const max = Number(slider.max) || 100;
+    const pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+    slider.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, rgba(255, 255, 255, 0.12) ${pct}%, rgba(255, 255, 255, 0.12) 100%)`;
+  }
+
   private updateSliderLabels(): void {
     const w = this.currentFilters.weights;
     const vD = document.getElementById('val-demande');
@@ -158,6 +168,18 @@ export class UIManager {
     if (vC) vC.textContent = `${w.concurrence_inv} %`;
     if (vDia) vDia.textContent = `${w.coef_diabete} %`;
     if (vZ) vZ.textContent = `${w.bonus_zonage} %`;
+
+    const sliderDemande = document.getElementById('slider-demande') as HTMLInputElement;
+    const sliderConcurrence = document.getElementById('slider-concurrence') as HTMLInputElement;
+    const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
+    const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
+    const sliderMinPop = document.getElementById('slider-min-pop') as HTMLInputElement;
+
+    this.updateSliderGauge(sliderDemande, '#38bdf8');
+    this.updateSliderGauge(sliderConcurrence, '#a855f7');
+    this.updateSliderGauge(sliderDiabete, '#f59e0b');
+    this.updateSliderGauge(sliderZonage, '#10b981');
+    this.updateSliderGauge(sliderMinPop, '#06b6d4');
   }
 
   public updateExcludedCount(count: number): void {
@@ -218,7 +240,7 @@ export class UIManager {
     });
   }
 
-  public renderZoneDetail(zone: ZoneFeature): void {
+  public renderZoneDetail(zone: ZoneFeature, autoSwitchTab: boolean = false): void {
     const emptyState = document.getElementById('zone-detail-empty');
     const content = document.getElementById('zone-detail-content');
     if (emptyState) emptyState.classList.add('hidden');
@@ -244,7 +266,8 @@ export class UIManager {
     const scoreColor = getColorForScore(score, p.is_excluded);
     if (elScoreCircle) {
       elScoreCircle.style.borderColor = scoreColor;
-      elScoreCircle.style.boxShadow = `0 0 15px ${scoreColor}40`;
+      elScoreCircle.style.background = `radial-gradient(circle closest-side, rgba(15, 23, 42, 0.95) 70%, transparent 72%), conic-gradient(${scoreColor} ${score}%, rgba(255, 255, 255, 0.1) 0)`;
+      elScoreCircle.style.boxShadow = `0 0 18px ${scoreColor}50`;
     }
 
     // Rank Banner
@@ -259,24 +282,25 @@ export class UIManager {
       }
     }
 
-    // Breakdown Bars
+    // Breakdown Bars (Percentile & Active Weight)
     const pctDemande = Math.round(p.score_demande || 0);
     const pctConcurrence = Math.round(p.score_concurrence || 0);
     const pctDiabete = Math.round(p.score_diabete || 0);
+    const w = this.currentFilters.weights;
 
     const elBarValD = document.getElementById('bar-val-demande');
     const elBarFillD = document.getElementById('bar-fill-demande');
-    if (elBarValD) elBarValD.textContent = `${pctDemande} % (percentile)`;
+    if (elBarValD) elBarValD.textContent = `${pctDemande} % (Poids: ${w.demande_65plus}%)`;
     if (elBarFillD) elBarFillD.style.width = `${pctDemande}%`;
 
     const elBarValC = document.getElementById('bar-val-concurrence');
     const elBarFillC = document.getElementById('bar-fill-concurrence');
-    if (elBarValC) elBarValC.textContent = `${pctConcurrence} % (percentile)`;
+    if (elBarValC) elBarValC.textContent = `${pctConcurrence} % (Poids: ${w.concurrence_inv}%)`;
     if (elBarFillC) elBarFillC.style.width = `${pctConcurrence}%`;
 
     const elBarValDia = document.getElementById('bar-val-diabete');
     const elBarFillDia = document.getElementById('bar-fill-diabete');
-    if (elBarValDia) elBarValDia.textContent = `${pctDiabete} % (percentile)`;
+    if (elBarValDia) elBarValDia.textContent = `${pctDiabete} % (Poids: ${w.coef_diabete}%)`;
     if (elBarFillDia) elBarFillDia.style.width = `${pctDiabete}%`;
 
     // Metrics Table
@@ -301,7 +325,8 @@ export class UIManager {
       el.textContent = String(radius);
     });
 
-    // Automatically switch to detail tab
-    this.switchTab('detail');
+    if (autoSwitchTab) {
+      this.switchTab('detail');
+    }
   }
 }

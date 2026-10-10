@@ -1,15 +1,25 @@
 import maplibregl, { Map, MapGeoJSONFeature } from 'maplibre-gl';
 import { ZonesGeoJSON, PodologuesGeoJSON, ZoneFeature } from './types';
 
+// Safe MapLibre accessor: prioritize window.maplibregl from unpkg CDN script
+declare const window: any;
+function getMapLibre(): any {
+  if (typeof window !== 'undefined' && window.maplibregl) {
+    return window.maplibregl;
+  }
+  return maplibregl;
+}
+
 export class MapManager {
   private map: Map;
-  private popup: maplibregl.Popup;
+  private popup: any;
 
   constructor(
     containerId: string,
     onZoneClick: (zone: ZoneFeature) => void,
     onLoadComplete: () => void
   ) {
+    const ml = getMapLibre();
     const mapStyle = {
       version: 8,
       sources: {
@@ -34,7 +44,7 @@ export class MapManager {
       ],
     };
 
-    this.map = new maplibregl.Map({
+    this.map = new ml.Map({
       container: containerId,
       style: mapStyle as any,
       center: [2.3522, 48.8566], // Paris
@@ -43,9 +53,9 @@ export class MapManager {
       maxZoom: 18,
     });
 
-    this.map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
+    this.map.addControl(new ml.NavigationControl({ showCompass: true }), 'top-right');
 
-    this.popup = new maplibregl.Popup({
+    this.popup = new ml.Popup({
       closeButton: false,
       closeOnClick: false,
       offset: 12,
@@ -72,7 +82,7 @@ export class MapManager {
       data: { type: 'FeatureCollection', features: [] },
     });
 
-    // 1. Zones Fill Choropleth Layer
+    // 1. Zones Fill Choropleth Layer (direct color property computed client-side)
     this.map.addLayer({
       id: 'zones-fill',
       type: 'fill',
@@ -80,22 +90,13 @@ export class MapManager {
       paint: {
         'fill-color': [
           'case',
-          ['boolean', ['get', 'is_excluded'], false],
+          ['==', ['get', 'is_excluded'], true],
           '#94a3b8', // Excluded: neutral gray
-          [
-            'interpolate',
-            ['linear'],
-            ['coalesce', ['get', 'score'], 0],
-            0, '#64748b',   // 0: Cool steel/slate
-            25, '#0284c7',  // 25: Sky Blue
-            50, '#0d9488',  // 50: Teal
-            75, '#10b981',  // 75: Emerald Green
-            100, '#f59e0b'  // 100: Amber / Optimal Gold
-          ],
+          ['coalesce', ['get', 'color'], '#64748b'],
         ],
         'fill-opacity': [
           'case',
-          ['boolean', ['get', 'is_excluded'], false],
+          ['==', ['get', 'is_excluded'], true],
           0.35,
           0.72,
         ],
@@ -213,9 +214,12 @@ export class MapManager {
   }
 
   public updateZonesData(geojson: ZonesGeoJSON): void {
-    const source = this.map.getSource('zones-source') as maplibregl.GeoJSONSource;
+    const source = this.map.getSource('zones-source') as any;
     if (source) {
-      source.setData(geojson as any);
+      source.setData({
+        type: 'FeatureCollection',
+        features: geojson.features,
+      });
     }
   }
 

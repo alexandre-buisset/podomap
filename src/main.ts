@@ -8,6 +8,7 @@ class App {
   private podologuesGeoJSON: PodologuesGeoJSON | null = null;
   private mapManager: MapManager | null = null;
   private uiManager: UIManager | null = null;
+  private mapReady: boolean = false;
   private currentFilters: FilterSettings = {
     weights: { ...DEFAULT_WEIGHTS },
     minPopulation: 5000,
@@ -21,9 +22,27 @@ class App {
     this.init();
   }
 
-  private async init(): Promise<void> {
+  private init(): void {
+    // 1. Initialize UI Manager immediately so controls and sliders are interactive from millisecond 0
+    this.uiManager = new UIManager(this.currentFilters, {
+      onFiltersChanged: (filters) => this.handleFiltersChanged(filters),
+      onZoneClickedFromTop10: (zone) => this.handleZoneSelected(zone, true),
+      onResetWeights: () => this.handleFiltersChanged(this.currentFilters),
+    });
+
+    // 2. Initialize Map Manager
+    this.mapManager = new MapManager(
+      'map',
+      (zone) => this.handleZoneSelected(zone, false),
+      () => this.onMapReady()
+    );
+
+    // 3. Asynchronously fetch GeoJSON data files
+    this.loadData();
+  }
+
+  private async loadData(): Promise<void> {
     try {
-      // 1. Fetch data files in parallel
       const [zonesRes, podRes] = await Promise.all([
         fetch('/data/zones.geojson'),
         fetch('/data/podologues.geojson'),
@@ -36,41 +55,46 @@ class App {
       this.zonesGeoJSON = await zonesRes.json();
       this.podologuesGeoJSON = await podRes.json();
 
-      // 2. Initialize UI Manager
-      this.uiManager = new UIManager(this.currentFilters, {
-        onFiltersChanged: (filters) => this.handleFiltersChanged(filters),
-        onZoneClickedFromTop10: (zone) => this.handleZoneSelected(zone, true),
-        onResetWeights: () => this.handleFiltersChanged(this.currentFilters),
-      });
+      console.log(`[Podologie IDF] ${this.zonesGeoJSON?.features.length} zones et ${this.podologuesGeoJSON?.features.length} praticiens chargés.`);
 
-      // 3. Initialize Map Manager
-      this.mapManager = new MapManager(
-        'map',
-        (zone) => this.handleZoneSelected(zone, false),
-        () => this.onMapReady()
-      );
+      // If map is already loaded, render immediately
+      if (this.mapReady) {
+        this.setupMapDataAndRender();
+      }
     } catch (error) {
       console.error('Erreur lors du chargement de l\'application:', error);
-      alert('Erreur lors du chargement des données. Veuillez vérifier que le pipeline a bien été exécuté.');
+      alert('Erreur lors du chargement des données. Veuillez vérifier que le serveur local est actif.');
     }
   }
 
   private onMapReady(): void {
+    this.mapReady = true;
+    if (this.zonesGeoJSON && this.podologuesGeoJSON) {
+      this.setupMapDataAndRender();
+    }
+  }
+
+  private setupMapDataAndRender(): void {
     if (!this.zonesGeoJSON || !this.mapManager) return;
 
-    // Load podologues points in map source
     if (this.podologuesGeoJSON) {
       this.mapManager.setPodologuesData(this.podologuesGeoJSON);
     }
 
     // Run initial score calculation
     this.recalculateAndRender();
+
+    // Automatically initialize detail sheet with #1 zone if none is selected yet
+    const top10 = getTop10Zones(this.zonesGeoJSON.features, this.currentFilters.selectedDepartment);
+    if (top10.length > 0 && !this.selectedZone) {
+      this.selectedZone = top10[0];
+      this.uiManager?.renderZoneDetail(top10[0], false);
+    }
   }
 
   private handleFiltersChanged(newFilters: FilterSettings): void {
     this.currentFilters = { ...newFilters, weights: { ...newFilters.weights } };
 
-    // Toggle podologues points visibility
     if (this.mapManager) {
       this.mapManager.setPodologuesVisible(this.currentFilters.showPodologuesLayer);
       this.mapManager.filterByDepartment(this.currentFilters.selectedDepartment);
@@ -82,7 +106,7 @@ class App {
   private recalculateAndRender(): void {
     if (!this.zonesGeoJSON || !this.mapManager || !this.uiManager) return;
 
-    // Compute scores on all features (executes in < 5ms)
+    // Compute scores and individual colors on all features (< 2ms)
     this.zonesGeoJSON.features = computeOpportunityScores(
       this.zonesGeoJSON.features,
       this.currentFilters
@@ -104,14 +128,14 @@ class App {
     );
     this.uiManager.renderTop10(top10);
 
-    // If a zone is currently selected, refresh its detail sheet with updated scores
+    // If a zone is currently selected, refresh its detail sheet with updated scores (without stealing tab focus)
     if (this.selectedZone) {
       const refreshed = this.zonesGeoJSON.features.find(
         (f) => f.properties.code_insee === this.selectedZone?.properties.code_insee
       );
       if (refreshed) {
         this.selectedZone = refreshed;
-        this.uiManager.renderZoneDetail(refreshed);
+        this.uiManager.renderZoneDetail(refreshed, false);
       }
     }
   }
@@ -119,7 +143,8 @@ class App {
   private handleZoneSelected(zone: ZoneFeature, flyTo: boolean): void {
     this.selectedZone = zone;
     if (this.uiManager) {
-      this.uiManager.renderZoneDetail(zone);
+      // User explicitly clicked a zone: switch to detail tab
+      this.uiManager.renderZoneDetail(zone, true);
     }
 
     if (this.mapManager) {
@@ -135,7 +160,13 @@ class App {
   }
 }
 
-// Start application
-window.addEventListener('DOMContentLoaded', () => {
+// Robust startup that guarantees execution even if DOMContentLoaded already fired
+function startApp(): void {
   new App();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
