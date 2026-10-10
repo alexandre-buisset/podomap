@@ -204,23 +204,23 @@ export function computeOpportunityScores(
     feat.properties.ratio_hab_par_podo = ratioHabPodo;
 
     // Saturation Penalty / Gatekeeper:
-    // Évite formellement l'anomalie où des villes saturées (comme Vincennes avec 55 podologues ou Levallois avec 97)
+    // Évite formellement l'anomalie où des villes saturées (comme Vincennes avec 55 podologues, Nogent/Le Perreux avec 26)
     // apparaissaient en vert / top opportunité uniquement grâce à leur revenu élevé !
     let saturationMultiplier = 1.0;
-    if (podosInRadius >= 40) {
-      saturationMultiplier = 0.25; // Saturation extrême (Vincennes 55 podos, Levallois 97 podos)
+    if (podosInRadius >= 35) {
+      saturationMultiplier = 0.20; // Saturation extrême (Vincennes 55 podos, Saint-Mandé 76 podos, Levallois 97 podos)
     } else if (podosInRadius >= 20) {
-      saturationMultiplier = 0.45; // Forte saturation (Nogent 26 podos, Saint-Maur 32 podos)
+      saturationMultiplier = 0.32; // Forte saturation avérée (Nogent 26 podos, Le Perreux 26 podos, Saint-Maur 32 podos)
     } else if (podosInRadius >= 12) {
-      saturationMultiplier = 0.70; // Saturation modérée
+      saturationMultiplier = 0.55; // Saturation modérée
     } else if (podosInRadius >= 8) {
-      saturationMultiplier = 0.88;
+      saturationMultiplier = 0.78;
     }
 
-    if (pConcurrence < 20) {
+    if (pConcurrence < 15) {
+      saturationMultiplier = Math.min(saturationMultiplier, 0.30);
+    } else if (pConcurrence < 25) {
       saturationMultiplier = Math.min(saturationMultiplier, 0.45);
-    } else if (pConcurrence < 35) {
-      saturationMultiplier = Math.min(saturationMultiplier, 0.75);
     }
 
     let composite = 0;
