@@ -244,11 +244,11 @@
               <span id="radius-val-label" class="control-value-pill">2 km (défaut)</span>
             </div>
             <div id="radius-btn-group" class="pill-group">
-              <button class="pill-btn" data-radius="1">1 km</button>
-              <button class="pill-btn active" data-radius="2">2 km (optimal)</button>
-              <button class="pill-btn" data-radius="3">3 km</button>
+              <button class="pill-btn" data-radius="1">1 km (hyper-local)</button>
+              <button class="pill-btn active" data-radius="2">2 km (bassin de vie)</button>
+              <button class="pill-btn" data-radius="3">3 km (rural / périurbain)</button>
             </div>
-            <p class="control-hint">Compte les cabinets et la population senior dans un rayon direct à vol d'oiseau.</p>
+            <p class="control-hint">Bassin de patientèle directe : compte tous les cabinets RPPS dans un cercle de 2 km (temps d'accès ~15-20 min à pied ou 5-10 min en bus/vélo, y compris dans les communes limitrophes).</p>
           </div>
 
           <!-- Weights Sliders Section -->
@@ -685,12 +685,26 @@
             <li><strong>🩺 Médical & Diabète (Soins Conventionnés) :</strong> Modèle axé sur les déserts médicaux stricts, les soins de pédicurie diabétiques pris en charge à 100% et les zones éligibles aux aides publiques d'installation.</li>
           </ul>
 
-          <h3>3. Respect du RGPD & Éthique des données</h3>
+          <h3>3. Recommandations de l'Ordre National des Pédicures-Podologues (ONPP) & Rayon de 2 km</h3>
+          <p>
+            L'<strong>Ordre National des Pédicures-Podologues (ONPP)</strong> met à disposition des professionnels son outil d'aide à l'installation cartographique <strong>PODEMO (V2)</strong> et publie un livret officiel d'accompagnement à l'installation libérale.
+          </p>
+          <div class="alert-box alert-info">
+            <strong>🎯 Le ratio d'équilibre économique (ONPP / Gestion de Cabinet) :</strong><br />
+            Pour assurer la viabilité d'un cabinet libéral sans risque de sous-activité ou de cannibalisation de patientèle, les repères de la profession préconisent un ratio d'équilibre d'environ <strong>1 pédicure-podologue pour 3 000 à 4 000 habitants</strong> (avec un seuil optimal d'au moins 1 pour 2 500 dans les zones avec fort pouvoir d'achat ou patientèle senior). En dessous de 1 pour 2 000 habitants, la zone est considérée comme saturée.
+          </div>
+          <p>
+            <strong>Pourquoi mesurer les praticiens dans un rayon de 2 km (zone de chalandise directe) ?</strong><br />
+            Pour un patient, les limites administratives communales sont purement fictives : en milieu urbain ou périurbain, 2 km représente un trajet naturel de 15 à 20 minutes à pied ou 5 à 10 minutes en transport / vélo. C'est l'échelle géographique officielle retenue par les analyses ordinales (notamment pour l'instruction des demandes d'installation et de cabinets secondaires selon le Code de la santé publique, qui analyse les rayons de 2 km, 5 km et 10 km).<br />
+            <em>Exemple concret :</em> Une commune peut ne compter que 9 podologues intra-muros, mais être entourée de 17 confrères à moins de 2 km dans les communes voisines (soit 26 concurrents directs au total, comme à Nogent-sur-Marne). Inversement, un bourg de Seine-et-Marne sans podologue dans un rayon de 2 à 3 km draîne naturellement tous les petits villages limitrophes dépourvus de cabinet.
+          </p>
+
+          <h3>4. Respect du RGPD & Éthique des données</h3>
           <p>
             Bien que le Répertoire Partagé des Professionnels intervenant dans le système de Santé (RPPS) soit public, aucun nom, prénom ni donnée de contact personnelle n'est stocké dans cette application ni affiché sur la carte. Seuls les emplacements géographiques anonymisés des cabinets sont représentés.
           </p>
 
-          <h3>4. Sources Ouvertes et Licences</h3>
+          <h3>5. Sources Ouvertes et Licences</h3>
           <table class="sources-table">
             <thead>
               <tr>
