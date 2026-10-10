@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- SEO & Privacy: strictly noindex per spec -->
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Carte d'Opportunités – Cabinet de Pédicurie-Podologie (Île-de-France)</title>
+  <meta name="description" content="Outil d'aide à la décision pour l'installation d'un cabinet de podologie en Île-de-France. Analyse comparative demande vs concurrence." />
+
+  <!-- Fonts & MapLibre CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "maplibre-gl": "https://esm.sh/maplibre-gl@4.7.1"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Top Header Bar -->
+    <header id="top-navbar" class="glass-bar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a5 5 0 0 0-5 5v3a5 5 0 0 0 10 0V7a5 5 0 0 0-5-5z"></path>
+            <path d="M7 14c-2 2-3 4-3 6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2c0-2-1-4-3-6"></path>
+            <circle cx="12" cy="18" r="1"></circle>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Podologie<span>IDF</span></h1>
+          <span class="subtitle">Carte d'Opportunités d'Installation</span>
+        </div>
+      </div>
+
+      <div class="header-center-disclaimer">
+        <span class="badge-warning">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          Aide à la décision · Pas une prévision de CA
+        </span>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-toggle-sidebar" class="btn-icon" title="Afficher/Masquer le panneau">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+        </button>
+        <button id="btn-open-methodology" class="btn-secondary">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Méthode & Sources
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container with Map and Sidebar -->
+    <main id="main-content">
+      <!-- Fullscreen Map Container -->
+      <div id="map-container">
+        <div id="map"></div>
+
+        <!-- Floating Map Legend -->
+        <div id="map-legend" class="glass-card legend-box">
+          <div class="legend-header">
+            <span>Score d'Opportunité</span>
+            <span id="legend-range-label">0 à 100</span>
+          </div>
+          <div class="legend-gradient-bar"></div>
+          <div class="legend-labels">
+            <span>Faible</span>
+            <span>Modéré</span>
+            <span>Favorable</span>
+            <span>Optimal</span>
+          </div>
+          <div class="legend-excluded">
+            <span class="legend-color-chip chip-excluded"></span>
+            <span>Pop. &lt; seuil minimal (zone grisée)</span>
+          </div>
+          <div id="legend-podologues-chip" class="legend-podologues hidden">
+            <span class="legend-color-chip chip-podologue"></span>
+            <span>Cabinet de podologie (point)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsible Floating Control Sidebar -->
+      <aside id="sidebar" class="sidebar-container glass-card">
+        <!-- Sidebar Navigation Tabs -->
+        <nav class="sidebar-tabs">
+          <button id="tab-controls-btn" class="tab-btn active" data-tab="controls">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="21" x2="4" y2="14"></line>
+              <line x1="4" y1="10" x2="4" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12" y2="3"></line>
+              <line x1="20" y1="21" x2="20" y2="16"></line>
+              <line x1="20" y1="12" x2="20" y2="3"></line>
+              <line x1="1" y1="14" x2="7" y2="14"></line>
+              <line x1="9" y1="8" x2="15" y2="8"></line>
+              <line x1="17" y1="16" x2="23" y2="16"></line>
+            </svg>
+            Paramètres
+          </button>
+          <button id="tab-ranking-btn" class="tab-btn" data-tab="ranking">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            Top 10
+            <span id="badge-top-count" class="tab-badge">10</span>
+          </button>
+          <button id="tab-detail-btn" class="tab-btn" data-tab="detail">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Fiche Zone
+          </button>
+        </nav>
+
+        <!-- Tab 1: Paramètres / Sliders & Filtres -->
+        <section id="panel-controls" class="tab-panel active">
+          <!-- Department Filter -->
+          <div class="control-group">
+            <label class="control-title">Département</label>
+            <div id="dept-filter-group" class="pill-group">
+              <button class="pill-btn active" data-dept="all">Tous (V1)</button>
+              <button class="pill-btn" data-dept="75">75 Paris</button>
+              <button class="pill-btn" data-dept="92">92 Hts-de-Seine</button>
+              <button class="pill-btn" data-dept="93">93 Seine-St-Denis</button>
+              <button class="pill-btn" data-dept="94">94 Val-de-Marne</button>
+            </div>
+          </div>
+
+          <!-- Radius Selector -->
+          <div class="control-group">
+            <div class="control-header">
+              <label class="control-title">Rayon de concurrence</label>
+              <span id="radius-val-label" class="control-value-pill">2 km (défaut)</span>
+            </div>
+            <div id="radius-btn-group" class="pill-group">
+              <button class="pill-btn" data-radius="1">1 km</button>
+              <button class="pill-btn active" data-radius="2">2 km (optimal)</button>
+              <button class="pill-btn" data-radius="3">3 km</button>
+            </div>
+            <p class="control-hint">Compte les cabinets et la population senior dans un rayon direct à vol d'oiseau.</p>
+          </div>
+
+          <!-- Weights Sliders Section -->
+          <div class="control-group">
+            <div class="control-header">
+              <label class="control-title">Pondération du Score (100%)</label>
+              <button id="btn-reset-weights" class="btn-text" title="Réinitialiser les poids par défaut">Par défaut</button>
+            </div>
+
+            <!-- Slider 1: Demande 65+ -->
+            <div class="slider-item">
+              <div class="slider-label-row">
+                <span class="slider-name">
+                  <span class="dot-indicator dot-blue"></span>
+                  Demande Seniors (65 ans +)
+                </span>
+                <span id="val-demande" class="slider-val">35 %</span>
+              </div>
+              <input type="range" id="slider-demande" min="0" max="100" step="5" value="35" class="slider-input" />
+            </div>
+
+            <!-- Slider 2: Concurrence inversée -->
+            <div class="slider-item">
+              <div class="slider-label-row">
+                <span class="slider-name">
+                  <span class="dot-indicator dot-purple"></span>
+                  Concurrence faible (Densité inversée)
+                </span>
+                <span id="val-concurrence" class="slider-val">40 %</span>
+              </div>
+              <input type="range" id="slider-concurrence" min="0" max="100" step="5" value="40" class="slider-input" />
+            </div>
+
+            <!-- Slider 3: Diabète -->
+            <div class="slider-item">
+              <div class="slider-label-row">
+                <span class="slider-name">
+                  <span class="dot-indicator dot-amber"></span>
+                  Besoin Diabète (Assurance Maladie)
+                </span>
+                <span id="val-diabete" class="slider-val">10 %</span>
+              </div>
+              <input type="range" id="slider-diabete" min="0" max="100" step="5" value="10" class="slider-input" />
+            </div>
+
+            <!-- Slider 4: Zonage ARS -->
+            <div class="slider-item">
+              <div class="slider-label-row">
+                <span class="slider-name">
+                  <span class="dot-indicator dot-emerald"></span>
+                  Bonus Zonage ARS (Aides)
+                </span>
+                <span id="val-zonage" class="slider-val">15 %</span>
+              </div>
+              <input type="range" id="slider-zonage" min="0" max="100" step="5" value="15" class="slider-input" />
+              <div id="zonage-redistrib-note" class="zonage-notice">
+                ℹ️ Zonage spécifique non publié en open data : ces 15% sont automatiquement redistribués sur les 3 critères.
+              </div>
+            </div>
+          </div>
+
+          <!-- Minimum Population Filter -->
+          <div class="control-group">
+            <div class="control-header">
+              <label class="control-title">Seuil de population minimale</label>
+              <span id="val-min-pop" class="control-value-pill">5 000 hab.</span>
+            </div>
+            <input type="range" id="slider-min-pop" min="0" max="30000" step="1000" value="5000" class="slider-input" />
+            <div class="control-subtext">
+              <span id="excluded-count-label">0 communes exclues</span>
+            </div>
+          </div>
+
+          <!-- Layers Toggle -->
+          <div class="control-group">
+            <label class="toggle-control">
+              <input type="checkbox" id="toggle-podologues-layer" />
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">Afficher les cabinets de podologie (points)</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Tab 2: Top 10 Zones Ranking -->
+        <section id="panel-ranking" class="tab-panel">
+          <div class="panel-header-row">
+            <div>
+              <h3 class="panel-heading">Top 10 des Opportunités</h3>
+              <p class="panel-subheading">Classement selon les pondérations actuelles</p>
+            </div>
+          </div>
+          <div id="top10-list" class="top-ranking-list">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- Tab 3: Detailed Zone Sheet -->
+        <section id="panel-detail" class="tab-panel">
+          <div id="zone-detail-empty" class="empty-state">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+              <path d="M2 12h20"></path>
+            </svg>
+            <p>Cliquez sur une commune ou un arrondissement pour afficher sa fiche détaillée.</p>
+          </div>
+
+          <div id="zone-detail-content" class="zone-sheet hidden">
+            <!-- Sheet Header -->
+            <div class="sheet-header">
+              <div>
+                <span id="sheet-dept-badge" class="dept-badge">75</span>
+                <h2 id="sheet-zone-nom">Paris 15e</h2>
+                <span id="sheet-insee-code" class="code-insee-label">INSEE: 75115</span>
+              </div>
+              <div class="score-gauge-box">
+                <div id="sheet-score-circle" class="score-circle">
+                  <span id="sheet-score-val">78</span>
+                  <span class="score-max">/100</span>
+                </div>
+                <span class="score-status-text">Score d'Opportunité</span>
+              </div>
+            </div>
+
+            <!-- Rank in Department Banner -->
+            <div id="sheet-rank-banner" class="rank-banner">
+              <span class="trophy-icon">🏆</span>
+              <span id="sheet-rank-text">Rang : 1er sur 36 dans les Hauts-de-Seine</span>
+            </div>
+
+            <!-- Score Criteria Breakdown -->
+            <div class="sheet-section">
+              <h4 class="section-title">Décomposition du Score (Percentiles)</h4>
+              
+              <div class="breakdown-item">
+                <div class="breakdown-meta">
+                  <span>Demande Seniors (65+)</span>
+                  <span id="bar-val-demande" class="breakdown-score">85%</span>
+                </div>
+                <div class="bar-track">
+                  <div id="bar-fill-demande" class="bar-fill fill-blue" style="width: 85%"></div>
+                </div>
+              </div>
+
+              <div class="breakdown-item">
+                <div class="breakdown-meta">
+                  <span>Concurrence Faible (Inversée)</span>
+                  <span id="bar-val-concurrence" class="breakdown-score">72%</span>
+                </div>
+                <div class="bar-track">
+                  <div id="bar-fill-concurrence" class="bar-fill fill-purple" style="width: 72%"></div>
+                </div>
+              </div>
+
+              <div class="breakdown-item">
+                <div class="breakdown-meta">
+                  <span>Besoin Diabète (Département)</span>
+                  <span id="bar-val-diabete" class="breakdown-score">60%</span>
+                </div>
+                <div class="bar-track">
+                  <div id="bar-fill-diabete" class="bar-fill fill-amber" style="width: 60%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Raw Data Table -->
+            <div class="sheet-section">
+              <h4 class="section-title">Données Brutes & Ratios</h4>
+              <table class="metrics-table">
+                <tbody>
+                  <tr>
+                    <td>Population totale</td>
+                    <td id="m-pop-totale" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Population 65 ans et +</td>
+                    <td id="m-pop-65plus" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Part des 65 ans et +</td>
+                    <td id="m-part-65plus" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Cabinets dans la zone</td>
+                    <td id="m-podo-zone" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Cabinets dans le rayon (<span class="m-radius-val">2</span> km)</td>
+                    <td id="m-podo-radius" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Densité / 10 000 seniors</td>
+                    <td id="m-density-senior" class="metric-val highlight">-</td>
+                  </tr>
+                  <tr>
+                    <td>Prévalence Diabète dép.</td>
+                    <td id="m-diabete-prev" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Zonage conventionnel</td>
+                    <td id="m-zonage-status" class="metric-val">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <!-- Methodology & Sources Modal -->
+    <div id="modal-methodology" class="modal-backdrop hidden">
+      <div class="modal-card glass-card">
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+            <h2>Méthodologie & Sources Officielles</h2>
+          </div>
+          <button id="btn-close-modal" class="btn-icon">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="alert-box">
+            <strong>⚠️ Avertissement d'aide à la décision :</strong>
+            Ce score d'opportunité est un indicateur statistique purement comparatif conçu pour assister une professionnelle de santé dans sa réflexion. Il ne constitue en aucun cas une garantie de patientèle, de chiffre d'affaires ou de viabilité financière. Une étude de terrain (visite des locaux, rencontre des médecins généralistes et structures médico-sociales locales) demeure indispensable.
+          </div>
+
+          <h3>1. Calcul du Score d'Opportunité (0 à 100)</h3>
+          <p>
+            Le score est calculé <strong>en temps réel côté navigateur</strong> pour assurer une réactivité instantanée des curseurs. Chaque critère est normalisé sous forme de <strong>rang en percentile (0 à 100)</strong> sur l'ensemble des zones éligibles (communes dont la population est supérieure au seuil minimal fixé) :
+          </p>
+          <ul>
+            <li><strong>Demande Seniors (65 ans et plus) :</strong> Plus le volume absolu de seniors est élevé, plus le percentile de demande augmente.</li>
+            <li><strong>Concurrence inversée :</strong> Mesure le nombre de cabinets de podologie dans le rayon d'influence par rapport à la population senior accessible. Moins il y a de praticiens par rapport aux seniors, plus l'opportunité est forte (percentile inversé).</li>
+            <li><strong>Besoin Diabète :</strong> Taux de prévalence de la pathologie diabétique par département issu de la Cartographie des Pathologies de l'Assurance Maladie.</li>
+            <li><strong>Zonage conventionnel :</strong> Bonus accordé aux zones sous-dotées reconnues. En l'absence d'arrêté spécifique en open data, son poids est redistribué proportionnellement.</li>
+          </ul>
+
+          <h3>2. Respect du RGPD & Éthique des données</h3>
+          <p>
+            Bien que le Répertoire Partagé des Professionnels intervenant dans le système de Santé (RPPS) soit public, aucun nom, prénom ni donnée de contact personnelle n'est stocké dans cette application ni affiché sur la carte. Seuls les emplacements géographiques anonymisés des cabinets sont représentés.
+          </p>
+
+          <h3>3. Sources Ouvertes et Licences</h3>
+          <table class="sources-table">
+            <thead>
+              <tr>
+                <th>Besoin</th>
+                <th>Source officielle</th>
+                <th>Producteur & Licence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Praticiens podologues</td>
+                <td>RPPS - Annuaire Santé (Extraction publique 2026)</td>
+                <td>Agence du Numérique en Santé (Licence Ouverte 2.0)</td>
+              </tr>
+              <tr>
+                <td>Géocodage des adresses</td>
+                <td>Base Adresse Nationale (API Adresse lot)</td>
+                <td>DINUM / IGN (Licence ODbL / Licence Ouverte)</td>
+              </tr>
+              <tr>
+                <td>Démographie & seniors</td>
+                <td>Recensement de la population (IRIS & Communes 2021)</td>
+                <td>INSEE (Licence Ouverte)</td>
+              </tr>
+              <tr>
+                <td>Contours communaux</td>
+                <td>Découpage administratif & Open Data Paris</td>
+                <td>IGN, DINUM, Ville de Paris (Licence Ouverte)</td>
+              </tr>
+              <tr>
+                <td>Prévalence diabète</td>
+                <td>Cartographie des pathologies 2023</td>
+                <td>Caisse Nationale de l'Assurance Maladie (data.ameli.fr)</td>
+              </tr>
+              <tr>
+                <td>Fonds de carte</td>
+                <td>Tuiles vectorielles OpenFreeMap</td>
+                <td>OpenStreetMap Contributors (ODbL)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

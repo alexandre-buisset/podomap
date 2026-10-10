@@ -1,0 +1,21 @@
+{
+  "name": "etude-podologue",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "build": "node scripts/build.js",
+    "preview": "node scripts/serve.js",
+    "data": "python -m pipeline.run",
+    "test:data": "python -m pytest tests/"
+  },
+  "dependencies": {
+    "@rollup/wasm-node": "^4.64.4",
+    "maplibre-gl": "^4.7.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

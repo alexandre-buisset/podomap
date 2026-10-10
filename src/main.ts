@@ -1,0 +1,141 @@
+import { FilterSettings, ZonesGeoJSON, PodologuesGeoJSON, ZoneFeature } from './types';
+import { DEFAULT_WEIGHTS, computeOpportunityScores, getTop10Zones } from './score';
+import { MapManager } from './map';
+import { UIManager } from './ui';
+
+class App {
+  private zonesGeoJSON: ZonesGeoJSON | null = null;
+  private podologuesGeoJSON: PodologuesGeoJSON | null = null;
+  private mapManager: MapManager | null = null;
+  private uiManager: UIManager | null = null;
+  private currentFilters: FilterSettings = {
+    weights: { ...DEFAULT_WEIGHTS },
+    minPopulation: 5000,
+    selectedRadiusKm: 2,
+    selectedDepartment: 'all',
+    showPodologuesLayer: false,
+  };
+  private selectedZone: ZoneFeature | null = null;
+
+  constructor() {
+    this.init();
+  }
+
+  private async init(): Promise<void> {
+    try {
+      // 1. Fetch data files in parallel
+      const [zonesRes, podRes] = await Promise.all([
+        fetch('/data/zones.geojson'),
+        fetch('/data/podologues.geojson'),
+      ]);
+
+      if (!zonesRes.ok || !podRes.ok) {
+        throw new Error('Impossible de charger les fichiers de données GeoJSON.');
+      }
+
+      this.zonesGeoJSON = await zonesRes.json();
+      this.podologuesGeoJSON = await podRes.json();
+
+      // 2. Initialize UI Manager
+      this.uiManager = new UIManager(this.currentFilters, {
+        onFiltersChanged: (filters) => this.handleFiltersChanged(filters),
+        onZoneClickedFromTop10: (zone) => this.handleZoneSelected(zone, true),
+        onResetWeights: () => this.handleFiltersChanged(this.currentFilters),
+      });
+
+      // 3. Initialize Map Manager
+      this.mapManager = new MapManager(
+        'map',
+        (zone) => this.handleZoneSelected(zone, false),
+        () => this.onMapReady()
+      );
+    } catch (error) {
+      console.error('Erreur lors du chargement de l\'application:', error);
+      alert('Erreur lors du chargement des données. Veuillez vérifier que le pipeline a bien été exécuté.');
+    }
+  }
+
+  private onMapReady(): void {
+    if (!this.zonesGeoJSON || !this.mapManager) return;
+
+    // Load podologues points in map source
+    if (this.podologuesGeoJSON) {
+      this.mapManager.setPodologuesData(this.podologuesGeoJSON);
+    }
+
+    // Run initial score calculation
+    this.recalculateAndRender();
+  }
+
+  private handleFiltersChanged(newFilters: FilterSettings): void {
+    this.currentFilters = { ...newFilters, weights: { ...newFilters.weights } };
+
+    // Toggle podologues points visibility
+    if (this.mapManager) {
+      this.mapManager.setPodologuesVisible(this.currentFilters.showPodologuesLayer);
+      this.mapManager.filterByDepartment(this.currentFilters.selectedDepartment);
+    }
+
+    this.recalculateAndRender();
+  }
+
+  private recalculateAndRender(): void {
+    if (!this.zonesGeoJSON || !this.mapManager || !this.uiManager) return;
+
+    // Compute scores on all features (executes in < 5ms)
+    this.zonesGeoJSON.features = computeOpportunityScores(
+      this.zonesGeoJSON.features,
+      this.currentFilters
+    );
+
+    // Update map choropleth data
+    this.mapManager.updateZonesData(this.zonesGeoJSON);
+
+    // Count excluded zones
+    const excludedCount = this.zonesGeoJSON.features.filter(
+      (f) => f.properties.is_excluded
+    ).length;
+    this.uiManager.updateExcludedCount(excludedCount);
+
+    // Update Top 10 list
+    const top10 = getTop10Zones(
+      this.zonesGeoJSON.features,
+      this.currentFilters.selectedDepartment
+    );
+    this.uiManager.renderTop10(top10);
+
+    // If a zone is currently selected, refresh its detail sheet with updated scores
+    if (this.selectedZone) {
+      const refreshed = this.zonesGeoJSON.features.find(
+        (f) => f.properties.code_insee === this.selectedZone?.properties.code_insee
+      );
+      if (refreshed) {
+        this.selectedZone = refreshed;
+        this.uiManager.renderZoneDetail(refreshed);
+      }
+    }
+  }
+
+  private handleZoneSelected(zone: ZoneFeature, flyTo: boolean): void {
+    this.selectedZone = zone;
+    if (this.uiManager) {
+      this.uiManager.renderZoneDetail(zone);
+    }
+
+    if (this.mapManager) {
+      this.mapManager.setSelectedZone(zone.properties.code_insee);
+      if (flyTo) {
+        const cLon = zone.properties.centroide_lon;
+        const cLat = zone.properties.centroide_lat;
+        if (cLon && cLat) {
+          this.mapManager.flyTo(cLon, cLat, 13);
+        }
+      }
+    }
+  }
+}
+
+// Start application
+window.addEventListener('DOMContentLoaded', () => {
+  new App();
+});

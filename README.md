@@ -23,9 +23,9 @@ L'application met en évidence sur une carte interactive, par zone (commune / ar
 |---|---|---|
 | **Jalon 1 – Données brutes** | ✅ Terminé | Extraction & déduplication RPPS (1 780 lieux, 1 575 praticiens), INSEE (142 zones), Géocodage BAN à 97,30% (>95% requis) |
 | **Jalon 2 – Agrégation & export** | ✅ Terminé | Métriques par commune, rayons 1/2/3km, tests unitaires (9 passés), contrôle 3 communes (Paris 15e, Boulogne, Montreuil) |
-| **Jalon 3 – Carte de base** | ⏳ En cours | Frontend statique Vite + MapLibre GL JS, choroplèthe, points cabinets, clic zone |
-| **Jalon 4 – Score interactif** | ⏳ À venir | Curseurs temps réel, filtres, Top 10 dynamique, tests du moteur de calcul |
-| **Jalon 5 – Finition & déploiement** | ⏳ À venir | Configuration Netlify, balise noindex, citations des licences et documentation |
+| **Jalon 3 – Carte de base** | ✅ Terminé | MapLibre GL JS choroplèthe plein écran, points cabinets toggleables, interaction clic/hover, chargement <100ms |
+| **Jalon 4 – Score interactif** | ✅ Terminé | Moteur de calcul temps réel (<1ms), curseurs de pondération, filtres département/rayon/population, Top 10 dynamique |
+| **Jalon 5 – Finition & déploiement** | ⏳ En cours | Configuration Netlify, balise noindex, citations des licences et documentation |
 | **Jalon 6 – V2 Extension Île-de-France**| ⏳ À venir | Support paramétrable étendu à toute l'IDF (75, 77, 78, 91, 92, 93, 94, 95) et documentation IRIS |
 
 ---
