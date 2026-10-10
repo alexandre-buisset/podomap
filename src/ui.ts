@@ -1,4 +1,4 @@
-import { FilterSettings, ZoneFeature, StrategyPreset } from './types';
+import { FilterSettings, ZoneFeature, StrategyPreset, MapDisplayCriterion } from './types';
 import { STRATEGY_PRESETS, getColorForScore } from './score';
 
 export interface UIEventListeners {
@@ -36,6 +36,8 @@ export class UIManager {
     this.bindEvents();
     this.updateSliderLabels();
     this.updatePresetDisplay();
+    this.updateLegendDisplay(this.currentFilters.displayCriterion || 'score_global');
+    this.updateRankingHeader(this.currentFilters.displayCriterion || 'score_global');
   }
 
   private bindEvents(): void {
@@ -214,6 +216,21 @@ export class UIManager {
     modalMethodo?.addEventListener('click', (e) => {
       if (e.target === modalMethodo) modalMethodo.classList.add('hidden');
     });
+
+    // 15. Map Display Criterion Pills (Score Global, Concurrence, Pouvoir d'Achat, Seniors, Transports)
+    const criterionPills = document.querySelectorAll('#criterion-btn-group .mode-pill');
+    criterionPills.forEach((pill) => {
+      pill.addEventListener('click', (e) => {
+        criterionPills.forEach((p) => p.classList.remove('active'));
+        const target = e.currentTarget as HTMLElement;
+        target.classList.add('active');
+        const criterion = (target.getAttribute('data-criterion') || 'score_global') as MapDisplayCriterion;
+        this.currentFilters.displayCriterion = criterion;
+        this.updateLegendDisplay(criterion);
+        this.updateRankingHeader(criterion);
+        this.listeners.onFiltersChanged(this.currentFilters);
+      });
+    });
   }
 
   public applyPreset(preset: StrategyPreset): void {
@@ -323,6 +340,92 @@ export class UIManager {
     }
   }
 
+  public updateLegendDisplay(criterion: MapDisplayCriterion): void {
+    const titleEl = document.getElementById('legend-title');
+    const rangeEl = document.getElementById('legend-range-label');
+    const barEl = document.getElementById('legend-gradient-bar');
+    const lbl1 = document.getElementById('legend-lbl-1');
+    const lbl2 = document.getElementById('legend-lbl-2');
+    const lbl3 = document.getElementById('legend-lbl-3');
+    const lbl4 = document.getElementById('legend-lbl-4');
+
+    if (barEl) {
+      barEl.className = `legend-gradient-bar gradient-${criterion}`;
+    }
+
+    switch (criterion) {
+      case 'concurrence':
+        if (titleEl) titleEl.textContent = '🛡️ Pression Concurrentielle';
+        if (rangeEl) rangeEl.textContent = 'Saturation ➔ Désert';
+        if (lbl1) lbl1.textContent = 'Saturé (>25)';
+        if (lbl2) lbl2.textContent = 'Soutenu';
+        if (lbl3) lbl3.textContent = 'Modéré';
+        if (lbl4) lbl4.textContent = 'Désert (<8)';
+        break;
+      case 'pouvoir_achat':
+        if (titleEl) titleEl.textContent = "💎 Pouvoir d'Achat (Filosofi)";
+        if (rangeEl) rangeEl.textContent = 'Revenu médian / ménage';
+        if (lbl1) lbl1.textContent = '< 22 k€';
+        if (lbl2) lbl2.textContent = '22 - 27 k€';
+        if (lbl3) lbl3.textContent = '27 - 33 k€';
+        if (lbl4) lbl4.textContent = '> 33 k€';
+        break;
+      case 'seniors':
+        if (titleEl) titleEl.textContent = '👥 Bassin Seniors (65+ ans)';
+        if (rangeEl) rangeEl.textContent = 'Volume de patients';
+        if (lbl1) lbl1.textContent = '< 1 500';
+        if (lbl2) lbl2.textContent = '1 500 - 3 500';
+        if (lbl3) lbl3.textContent = '3 500 - 7 000';
+        if (lbl4) lbl4.textContent = '> 7 000';
+        break;
+      case 'transports':
+        if (titleEl) titleEl.textContent = '🚆 Accès Paris & Gares (IDFM)';
+        if (rangeEl) rangeEl.textContent = 'Temps vers Paris Châtelet';
+        if (lbl1) lbl1.textContent = '> 60 min';
+        if (lbl2) lbl2.textContent = '40 - 60 min';
+        if (lbl3) lbl3.textContent = '25 - 40 min';
+        if (lbl4) lbl4.textContent = '< 25 min';
+        break;
+      case 'score_global':
+      default:
+        if (titleEl) titleEl.textContent = "Score d'Opportunité Global";
+        if (rangeEl) rangeEl.textContent = '0 à 100';
+        if (lbl1) lbl1.textContent = 'Faible';
+        if (lbl2) lbl2.textContent = 'Modéré';
+        if (lbl3) lbl3.textContent = 'Favorable';
+        if (lbl4) lbl4.textContent = 'Optimal';
+        break;
+    }
+  }
+
+  public updateRankingHeader(criterion: MapDisplayCriterion): void {
+    const titleEl = document.getElementById('ranking-panel-title');
+    const subEl = document.getElementById('ranking-panel-subtitle');
+    switch (criterion) {
+      case 'concurrence':
+        if (titleEl) titleEl.textContent = '🛡️ Top 10 - Moins de Concurrence';
+        if (subEl) subEl.textContent = 'Déserts podologiques (le plus faible ratio confrères / senior)';
+        break;
+      case 'pouvoir_achat':
+        if (titleEl) titleEl.textContent = "💎 Top 10 - Pouvoir d'Achat";
+        if (subEl) subEl.textContent = 'Communes les plus aisées (reste à charge semelles 140€-210€)';
+        break;
+      case 'seniors':
+        if (titleEl) titleEl.textContent = '👥 Top 10 - Bassin Seniors 65+';
+        if (subEl) subEl.textContent = "Communes comptant le plus grand nombre d'habitants âgés";
+        break;
+      case 'transports':
+        if (titleEl) titleEl.textContent = '🚆 Top 10 - Accessibilité Paris';
+        if (subEl) subEl.textContent = "Communes les plus rapides d'accès vers Paris et gares";
+        break;
+      case 'score_global':
+      default:
+        if (titleEl) titleEl.textContent = '🌟 Top 10 des Opportunités';
+        if (subEl) subEl.textContent = 'Classement synthétique pondéré selon le profil actif';
+        break;
+    }
+  }
+
   public renderTop10(top10Zones: ZoneFeature[]): void {
     const container = document.getElementById('top10-list');
     const badge = document.getElementById('badge-top-count');
@@ -338,15 +441,62 @@ export class UIManager {
 
     const radius = this.currentFilters.selectedRadiusKm;
     const podoKey = `nb_podologues_${radius}km` as const;
+    const densKey = `densite_10k_65plus_${radius}km` as const;
+    const criterion = this.currentFilters.displayCriterion || 'score_global';
 
     top10Zones.forEach((feat, idx) => {
       const p = feat.properties as any;
       const rank = idx + 1;
-      const score = (p.score || 0).toFixed(1);
-      const color = getColorForScore(p.score || 0);
-
+      const podoRadius = p[podoKey] ?? p.nb_podologues_rayon ?? 0;
+      const density = p[densKey] ?? p.densite_pour_10k_65plus ?? 0;
       const income = p.revenu_median ? `${p.revenu_median.toLocaleString('fr-FR')} €/an` : '-';
-      const semelles = p.panier_semelles_estime ? `💎 ~${p.panier_semelles_estime} €` : '';
+      const concColor = p.concurrence_color || '#10b981';
+      const concLabel = p.concurrence_label || 'Faible concurrence';
+
+      let pillScore = '';
+      let pillColor = '';
+      let pillBadgeHtml = '';
+
+      if (criterion === 'concurrence') {
+        pillScore = `${density.toFixed(1)} /10k`;
+        pillColor = concColor;
+        pillBadgeHtml = `
+          <span class="ranking-pill-badge" style="color: ${concColor}; background: ${concColor}18; border-color: ${concColor}45;">
+            ${concLabel} • ${podoRadius} podo. à ${radius}km
+          </span>`;
+      } else if (criterion === 'pouvoir_achat') {
+        pillScore = `${p.revenu_median ? `${Math.round(p.revenu_median / 1000)}k€` : '-'}`;
+        pillColor = '#f59e0b';
+        pillBadgeHtml = `
+          <span class="ranking-pill-badge" style="color: #d97706; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3);">
+            ${p.pouvoir_achat_label || 'Aisé'} • Panier: ~${p.panier_semelles_estime || 170}€
+          </span>`;
+      } else if (criterion === 'seniors') {
+        pillScore = `${Math.round((p.pop_65plus || 0) / 1000)}k sen.`;
+        pillColor = '#6366f1';
+        pillBadgeHtml = `
+          <span class="ranking-pill-badge" style="color: #6366f1; background: rgba(99, 102, 241, 0.12); border-color: rgba(99, 102, 241, 0.3);">
+            👥 ${Number(p.pop_65plus || 0).toLocaleString('fr-FR')} seniors (${((p.part_65plus || 0) * 100).toFixed(1)}%)
+          </span>`;
+      } else if (criterion === 'transports') {
+        pillScore = p.temps_paris_min ? `${p.temps_paris_min} m` : '-';
+        pillColor = '#06b6d4';
+        pillBadgeHtml = `
+          <span class="ranking-pill-badge" style="color: #06b6d4; background: rgba(6, 182, 212, 0.12); border-color: rgba(6, 182, 212, 0.3);">
+            ⏱️ ${p.temps_paris_min ? `${p.temps_paris_min}m vers Châtelet` : 'Non desservi'} ${p.gare_nom ? `• 🚉 ${p.gare_nom}` : ''}
+          </span>`;
+      } else {
+        // Score global
+        pillScore = (p.score || 0).toFixed(1);
+        pillColor = getColorForScore(p.score || 0);
+        pillBadgeHtml = `
+          <span class="ranking-pill-badge" style="color: ${concColor}; background: ${concColor}15; border-color: ${concColor}35;">
+            ${concLabel} (${podoRadius} podo.)
+          </span>
+          <span class="ranking-pill-badge" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.25);">
+            💎 ~${p.panier_semelles_estime || 170}€
+          </span>`;
+      }
 
       const card = document.createElement('div');
       card.className = 'ranking-card';
@@ -356,20 +506,21 @@ export class UIManager {
           <div class="ranking-zone-info">
             <div class="ranking-title-row">
               <h4>${p.nom}</h4>
-              ${semelles ? `<span class="ranking-semelles-chip">${semelles}</span>` : ''}
+              <span class="ranking-dept-tag">Dép. ${p.departement}</span>
+            </div>
+            <div class="ranking-badges-row">
+              ${pillBadgeHtml}
             </div>
             <div class="ranking-zone-meta">
-              <span>Dép. ${p.departement}</span>
+              <span>👥 ${Number(p.pop_totale || 0).toLocaleString('fr-FR')} hab.</span>
               <span>•</span>
               <span class="meta-income">Rev. ${income}</span>
-              <span>•</span>
-              <span>${p[podoKey] ?? p.nb_podologues_rayon} podo. (${radius} km)</span>
               ${p.temps_paris_min ? `<span>• ⏱️ ${p.temps_paris_min}m</span>` : ''}
             </div>
           </div>
         </div>
-        <div class="ranking-score-pill" style="color: ${color}; border-color: ${color}40; background: ${color}15;">
-          ${score}
+        <div class="ranking-score-pill" style="color: ${pillColor}; border-color: ${pillColor}45; background: ${pillColor}15;">
+          ${pillScore}
         </div>
       `;
 

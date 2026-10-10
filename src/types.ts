@@ -45,6 +45,10 @@ export interface ZoneProperties {
   score_diabete?: number;
   score_zonage?: number;
   score_transit?: number;
+  concurrence_niveau?: 'tres_faible' | 'faible' | 'moderee' | 'elevee' | 'saturee';
+  concurrence_label?: string;
+  concurrence_color?: string;
+  pouvoir_achat_label?: string;
   is_excluded?: boolean;
   rank_global?: number;
   rank_dept?: number;
@@ -86,6 +90,8 @@ export interface PodologuesGeoJSON {
 
 export type StrategyPreset = 'semelles' | 'equilibre' | 'medical' | 'custom';
 
+export type MapDisplayCriterion = 'score_global' | 'concurrence' | 'pouvoir_achat' | 'seniors' | 'transports';
+
 export interface ScoreWeights {
   pouvoir_achat_semelles: number; // default 30 (Revenu disponible & solvabilité semelles)
   concurrence_inv: number; // default 30 (Faible concurrence podologues)
@@ -98,6 +104,7 @@ export interface ScoreWeights {
 export interface FilterSettings {
   weights: ScoreWeights;
   activePreset: StrategyPreset;
+  displayCriterion: MapDisplayCriterion; // default 'score_global'
   minPopulation: number; // default 5000
   selectedRadiusKm: number; // 1, 2, or 3
   selectedDepartment: string; // 'all' or '75', '92', etc.

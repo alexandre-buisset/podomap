@@ -180,7 +180,65 @@ export function computeOpportunityScores(
     feat.properties.score_diabete = pDiabete;
     feat.properties.score_zonage = pZonage;
     feat.properties.score_transit = pTransit;
-    feat.properties.color = getColorForScore(feat.properties.score, false);
+
+    // Diagnostic labels and qualitative levels
+    const density = typeof (feat.properties as any)[radiusKey] === 'number'
+      ? (feat.properties as any)[radiusKey]
+      : feat.properties.densite_pour_10k_65plus || 0;
+
+    if (density <= 3.0) {
+      feat.properties.concurrence_niveau = 'tres_faible';
+      feat.properties.concurrence_label = '🛡️ Très faible concurrence';
+      feat.properties.concurrence_color = '#10b981';
+    } else if (density <= 8.0) {
+      feat.properties.concurrence_niveau = 'faible';
+      feat.properties.concurrence_label = '🟢 Faible concurrence';
+      feat.properties.concurrence_color = '#0d9488';
+    } else if (density <= 15.0) {
+      feat.properties.concurrence_niveau = 'moderee';
+      feat.properties.concurrence_label = '🟡 Concurrence modérée';
+      feat.properties.concurrence_color = '#0284c7';
+    } else if (density <= 25.0) {
+      feat.properties.concurrence_niveau = 'elevee';
+      feat.properties.concurrence_label = '🟠 Concurrence soutenue';
+      feat.properties.concurrence_color = '#f59e0b';
+    } else {
+      feat.properties.concurrence_niveau = 'saturee';
+      feat.properties.concurrence_label = '🔴 Forte saturation';
+      feat.properties.concurrence_color = '#ef4444';
+    }
+
+    const rev = feat.properties.revenu_median || 0;
+    if (rev >= 33000) {
+      feat.properties.pouvoir_achat_label = '💎 Très aisé (Semelles ~210 €)';
+    } else if (rev >= 27000) {
+      feat.properties.pouvoir_achat_label = '💎 Aisé (Semelles ~190 €)';
+    } else if (rev >= 22000) {
+      feat.properties.pouvoir_achat_label = '💰 Moyen (Semelles ~160 €)';
+    } else {
+      feat.properties.pouvoir_achat_label = '⚠️ Modeste (Soins Sécu 27 €)';
+    }
+
+    // Assign map choropleth color based on selected display criterion
+    const criterion = filters.displayCriterion || 'score_global';
+    switch (criterion) {
+      case 'concurrence':
+        feat.properties.color = getColorForConcurrence(pConcurrence, false);
+        break;
+      case 'pouvoir_achat':
+        feat.properties.color = getColorForPouvoirAchat(pPouvoirAchat, false);
+        break;
+      case 'seniors':
+        feat.properties.color = getColorForSeniors(pDemande, false);
+        break;
+      case 'transports':
+        feat.properties.color = getColorForTransports(pTransit, false);
+        break;
+      case 'score_global':
+      default:
+        feat.properties.color = getColorForScore(feat.properties.score, false);
+        break;
+    }
   });
 
   // 5. Excluded features
@@ -190,8 +248,11 @@ export function computeOpportunityScores(
     feat.properties.score = 0;
     feat.properties.score_demande = 0;
     feat.properties.score_concurrence = 0;
+    feat.properties.score_pouvoir_achat = 0;
     feat.properties.score_diabete = 0;
     feat.properties.score_zonage = 0;
+    feat.properties.concurrence_niveau = 'saturee';
+    feat.properties.concurrence_label = 'Exclue (< seuil pop)';
     feat.properties.color = getColorForScore(0, true);
     feat.properties.rank_global = undefined;
     feat.properties.rank_dept = undefined;
@@ -223,11 +284,12 @@ export function computeOpportunityScores(
 }
 
 /**
- * Get top 10 zones matching the current filters (ordered by score descending).
+ * Get top 10 zones matching the current filters and active criterion.
  */
 export function getTop10Zones(
   features: ZoneFeature[],
-  selectedDepartment: string = 'all'
+  selectedDepartment: string = 'all',
+  displayCriterion: string = 'score_global'
 ): ZoneFeature[] {
   const matching = features.filter((f) => {
     if (f.properties.is_excluded) return false;
@@ -237,38 +299,84 @@ export function getTop10Zones(
     return true;
   });
 
-  matching.sort((a, b) => (b.properties.score || 0) - (a.properties.score || 0));
+  matching.sort((a, b) => {
+    switch (displayCriterion) {
+      case 'concurrence':
+        return (b.properties.score_concurrence || 0) - (a.properties.score_concurrence || 0);
+      case 'pouvoir_achat':
+        return (b.properties.score_pouvoir_achat || 0) - (a.properties.score_pouvoir_achat || 0);
+      case 'seniors':
+        return (b.properties.pop_65plus || 0) - (a.properties.pop_65plus || 0);
+      case 'transports':
+        return (b.properties.score_transit || 0) - (a.properties.score_transit || 0);
+      case 'score_global':
+      default:
+        return (b.properties.score || 0) - (a.properties.score || 0);
+    }
+  });
+
   return matching.slice(0, 10);
 }
 
 /**
- * Return sleek HSL color hex for a given score (0 to 100).
- * Gradient:
- * - Excluded: Translucent Cool Gray
- * - 0 - 30: Muted Slate / Cool Steel
- * - 30 - 55: Cyan / Sky Blue
- * - 55 - 75: Emerald Green / Mint
- * - 75 - 100: Vivid Teal / Warm Gold / High Opportunity Emerald
+ * Global Score color scale (0 to 100).
  */
 export function getColorForScore(score: number, isExcluded: boolean = false): string {
-  if (isExcluded) {
-    return '#94a3b8'; // Slate 400
-  }
+  if (isExcluded) return '#94a3b8';
+  if (score < 25) return '#64748b'; // Slate 500
+  if (score < 45) return '#0284c7'; // Sky 600
+  if (score < 65) return '#0d9488'; // Teal 600
+  if (score < 80) return '#10b981'; // Emerald 500
+  return '#f59e0b'; // Amber 500
+}
 
-  if (score < 25) {
-    // Low opportunity (cool steel)
-    return '#64748b'; // Slate 500
-  } else if (score < 45) {
-    // Moderate (Sky Blue)
-    return '#0284c7'; // Sky 600
-  } else if (score < 65) {
-    // Promising (Teal / Cyan)
-    return '#0d9488'; // Teal 600
-  } else if (score < 80) {
-    // High opportunity (Emerald Green)
-    return '#10b981'; // Emerald 500
-  } else {
-    // Exceptional opportunity (Vibrant Emerald / Warm Gold highlight)
-    return '#f59e0b'; // Amber 500
-  }
+/**
+ * Concurrence (Pression concurrentielle) color scale:
+ * 100 = very few or 0 podologues per capita (High Opportunity Emerald)
+ * 0 = oversaturated zone (Red)
+ */
+export function getColorForConcurrence(percentile: number, isExcluded: boolean = false): string {
+  if (isExcluded) return '#94a3b8';
+  if (percentile >= 75) return '#10b981'; // Très faible concurrence (Émeraude / Haute opportunité)
+  if (percentile >= 50) return '#0d9488'; // Faible concurrence (Teal)
+  if (percentile >= 25) return '#0284c7'; // Concurrence modérée (Bleu)
+  if (percentile >= 10) return '#f59e0b'; // Concurrence soutenue (Ambre)
+  return '#ef4444'; // Forte saturation (Rouge)
+}
+
+/**
+ * Purchasing Power color scale:
+ * 100 = Highest disposable income (Warm Gold / Amber)
+ * 0 = Modest income (Slate)
+ */
+export function getColorForPouvoirAchat(percentile: number, isExcluded: boolean = false): string {
+  if (isExcluded) return '#94a3b8';
+  if (percentile >= 75) return '#f59e0b'; // Très aisé (Or chaud)
+  if (percentile >= 50) return '#10b981'; // Aisé (Émeraude)
+  if (percentile >= 25) return '#0284c7'; // Moyen (Bleu)
+  return '#64748b'; // Modeste (Acier)
+}
+
+/**
+ * Seniors Population color scale:
+ * 100 = Major senior population pool (Indigo)
+ */
+export function getColorForSeniors(percentile: number, isExcluded: boolean = false): string {
+  if (isExcluded) return '#94a3b8';
+  if (percentile >= 75) return '#6366f1'; // Bassin majeur (Indigo)
+  if (percentile >= 50) return '#0ea5e9'; // Fort (Bleu ciel)
+  if (percentile >= 25) return '#14b8a6'; // Moyen (Teal)
+  return '#64748b';
+}
+
+/**
+ * Public Transit accessibility scale:
+ * 100 = Fast access to Paris (< 25 min) and stations nearby (Cyan)
+ */
+export function getColorForTransports(percentile: number, isExcluded: boolean = false): string {
+  if (isExcluded) return '#94a3b8';
+  if (percentile >= 75) return '#06b6d4'; // Rapide (Cyan vif)
+  if (percentile >= 50) return '#10b981'; // Bonne desserte (Émeraude)
+  if (percentile >= 25) return '#0284c7'; // Moyen
+  return '#64748b';
 }

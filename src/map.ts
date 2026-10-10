@@ -274,27 +274,62 @@ export class MapManager {
 
       const score = typeof props.score === 'number' ? props.score.toFixed(1) : '-';
       const pop = props.pop_totale ? Number(props.pop_totale).toLocaleString('fr-FR') : '-';
+      const pop65 = props.pop_65plus ? Number(props.pop_65plus).toLocaleString('fr-FR') : '-';
+      const part65 = props.part_65plus ? ((Number(props.part_65plus)) * 100).toFixed(1) : '-';
       const isExcluded = props.is_excluded === true || props.is_excluded === 'true';
-      const tempsParis = props.temps_paris_min ? `~${props.temps_paris_min} min vers Paris Châtelet` : '';
-      const gareInfo = props.gare_nom ? `${props.gare_nom} (${props.gare_dist_km} km)` : '';
+      const tempsParis = props.temps_paris_min ? `~${props.temps_paris_min} min vers Paris` : '';
+      const gareInfo = props.gare_nom ? `${props.gare_nom}` : '';
 
-      let html = `<div style="font-family: var(--font-body); padding: 4px 6px;">
-        <strong style="font-size: 0.92rem; color: #0f172a;">${props.nom} (${props.departement})</strong><br/>
-        <span style="font-size: 0.78rem; color: #475569;">Population: ${pop} hab.</span><br/>`;
+      const podoRadius = props.nb_podologues_rayon ?? props.nb_podologues_2km ?? 0;
+      const densitySenior = props.densite_pour_10k_65plus ?? props.densite_10k_65plus_2km ?? 0;
+      const revMedian = props.revenu_median ? `${Number(props.revenu_median).toLocaleString('fr-FR')} €/an` : '-';
+      const semellesPrice = props.panier_semelles_estime ? `~${props.panier_semelles_estime} €` : '-';
+      const concLabel = props.concurrence_label || `${podoRadius} podologues (${Number(densitySenior).toFixed(1)}/10k)`;
+      const concColor = props.concurrence_color || '#0284c7';
 
-      if (tempsParis) {
-        html += `<span style="font-size: 0.76rem; color: #0284c7; font-weight: 600;">🚆 ${tempsParis}</span><br/>`;
-      }
-      if (gareInfo) {
-        html += `<span style="font-size: 0.74rem; color: #64748b;">🚉 ${gareInfo}</span><br/>`;
-      }
+      let html = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px 6px; min-width: 220px; color: #0f172a;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+          <strong style="font-size: 0.95rem; color: #0f172a;">${props.nom}</strong>
+          <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">Dép. ${props.departement}</span>
+        </div>`;
 
       if (isExcluded) {
-        html += `<span style="font-size: 0.75rem; color: #dc2626; font-weight: 600;">Zone sous le seuil minimal</span>`;
+        html += `<div style="padding: 3px 6px; background: #fee2e2; color: #dc2626; border-radius: 4px; font-size: 0.74rem; font-weight: 600; margin-bottom: 6px;">
+          Zone exclue (&lt; seuil minimal population)
+        </div>`;
       } else {
-        html += `<span style="font-size: 0.82rem; color: #059669; font-weight: 700;">Score Opportunité: ${score} / 100</span>`;
+        html += `<div style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 3px 8px; border-radius: 4px; margin-bottom: 6px;">
+          <span style="font-size: 0.75rem; color: #166534; font-weight: 600;">Score Opportunité</span>
+          <strong style="font-size: 0.95rem; color: #15803d;">${score} / 100</strong>
+        </div>`;
       }
-      html += `</div>`;
+
+      html += `<div style="font-size: 0.74rem; line-height: 1.5; border-top: 1px solid #e2e8f0; padding-top: 5px;">
+        <div style="margin-bottom: 2px;">
+          <strong>🛡️ Concurrence :</strong>
+          <span style="color: ${concColor}; font-weight: 700;"> ${concLabel}</span>
+          <span style="color: #64748b;"> (${podoRadius} podo. à 2km)</span>
+        </div>
+        <div style="margin-bottom: 2px;">
+          <strong>💎 Pouvoir d'achat :</strong>
+          <span> ${revMedian}</span>
+          <span style="color: #d97706; font-weight: 600;"> (Semelles: ${semellesPrice})</span>
+        </div>
+        <div style="margin-bottom: 2px;">
+          <strong>👥 Demande Seniors :</strong>
+          <span> ${pop65} hab.</span>
+          <span style="color: #64748b;"> (${part65} % des ${pop} hab.)</span>
+        </div>`;
+
+      if (tempsParis || gareInfo) {
+        html += `<div>
+          <strong>🚆 Transports :</strong>
+          <span> ${tempsParis ? tempsParis : ''}</span>
+          <span style="color: #64748b;">${gareInfo ? ` (${gareInfo})` : ''}</span>
+        </div>`;
+      }
+
+      html += `</div></div>`;
 
       this.popup.setLngLat(e.lngLat).setHTML(html).addTo(this.map);
     });

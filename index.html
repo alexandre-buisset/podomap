@@ -76,18 +76,40 @@
       <div id="map-container">
         <div id="map"></div>
 
+        <!-- Floating Criterion Selector Bar -->
+        <div id="map-mode-selector" class="glass-card map-floating-bar">
+          <span class="mode-bar-label">Afficher sur la carte :</span>
+          <div class="mode-pills-row" id="criterion-btn-group">
+            <button class="mode-pill active" data-criterion="score_global" title="Score synthétique selon le profil et les pondérations">
+              🌟 Score Global
+            </button>
+            <button class="mode-pill" data-criterion="concurrence" title="Pression concurrentielle : vert = désert/peu de confrères, rouge = saturation">
+              🛡️ Concurrence
+            </button>
+            <button class="mode-pill" data-criterion="pouvoir_achat" title="Revenu médian et capacité d'achat pour semelles 140€-210€">
+              💎 Pouvoir d'Achat
+            </button>
+            <button class="mode-pill" data-criterion="seniors" title="Bassin de population âgée de 65 ans et plus">
+              👥 Seniors 65+
+            </button>
+            <button class="mode-pill" data-criterion="transports" title="Accessibilité et temps de trajet estimé vers Paris Châtelet">
+              🚆 Transports
+            </button>
+          </div>
+        </div>
+
         <!-- Floating Map Legend -->
         <div id="map-legend" class="glass-card legend-box">
           <div class="legend-header">
-            <span>Score d'Opportunité</span>
+            <span id="legend-title">Score d'Opportunité</span>
             <span id="legend-range-label">0 à 100</span>
           </div>
-          <div class="legend-gradient-bar"></div>
-          <div class="legend-labels">
-            <span>Faible</span>
-            <span>Modéré</span>
-            <span>Favorable</span>
-            <span>Optimal</span>
+          <div id="legend-gradient-bar" class="legend-gradient-bar gradient-score_global"></div>
+          <div class="legend-labels" id="legend-labels-row">
+            <span id="legend-lbl-1">Faible</span>
+            <span id="legend-lbl-2">Modéré</span>
+            <span id="legend-lbl-3">Favorable</span>
+            <span id="legend-lbl-4">Optimal</span>
           </div>
           <div class="legend-excluded">
             <span class="legend-color-chip chip-excluded"></span>
@@ -346,8 +368,8 @@
         <section id="panel-ranking" class="tab-panel">
           <div class="panel-header-row">
             <div>
-              <h3 class="panel-heading">Top 10 des Opportunités</h3>
-              <p class="panel-subheading">Classement selon les pondérations actuelles</p>
+              <h3 class="panel-heading" id="ranking-panel-title">Top 10 des Opportunités</h3>
+              <p class="panel-subheading" id="ranking-panel-subtitle">Classement selon le profil et les critères actifs</p>
             </div>
           </div>
           <div id="top10-list" class="top-ranking-list">

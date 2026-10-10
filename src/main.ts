@@ -14,6 +14,7 @@ class App {
   private currentFilters: FilterSettings = {
     weights: { ...DEFAULT_WEIGHTS },
     activePreset: 'semelles',
+    displayCriterion: 'score_global',
     minPopulation: 5000,
     selectedRadiusKm: 2,
     selectedDepartment: 'all',
@@ -103,7 +104,11 @@ class App {
     this.recalculateAndRender();
 
     // Automatically initialize detail sheet with #1 zone if none is selected yet
-    const top10 = getTop10Zones(this.zonesGeoJSON.features, this.currentFilters.selectedDepartment);
+    const top10 = getTop10Zones(
+      this.zonesGeoJSON.features,
+      this.currentFilters.selectedDepartment,
+      this.currentFilters.displayCriterion
+    );
     if (top10.length > 0 && !this.selectedZone) {
       this.selectedZone = top10[0];
       this.uiManager?.renderZoneDetail(top10[0], false);
@@ -144,7 +149,8 @@ class App {
     // Update Top 10 list
     const top10 = getTop10Zones(
       this.zonesGeoJSON.features,
-      this.currentFilters.selectedDepartment
+      this.currentFilters.selectedDepartment,
+      this.currentFilters.displayCriterion
     );
     this.uiManager.renderTop10(top10);
 
