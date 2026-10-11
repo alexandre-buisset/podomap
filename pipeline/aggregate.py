@@ -1,10 +1,12 @@
-"""Aggregate demographic and competition metrics per geographic zone and export GeoJSON."""
+"""Aggregate demographic, youth, sports, and competition metrics per geographic zone and export GeoJSON."""
 
 import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 import pandas as pd
+from shapely.geometry import shape, Point
+
 from pipeline.config import (
     INTERIM_DIR,
     OUTPUT_DIR,
@@ -18,6 +20,7 @@ from pipeline.diabetes import get_diabetes_coefficients
 from pipeline.geo import get_all_zones_features, haversine_distance_km
 from pipeline.transport import enrich_zones_with_transit, process_stations, process_lines
 from pipeline.income import get_communal_income_lookup
+from pipeline.sports import get_sports_lookup
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -49,7 +52,7 @@ def build_and_export_data(
     output_dir = output_dir or OUTPUT_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Load population
+    # 1. Load population with youth and family demographics
     pop_path = INTERIM_DIR / "population_communes.csv"
     if not pop_path.exists():
         from pipeline.insee import extract_insee_population
@@ -62,6 +65,12 @@ def build_and_export_data(
             "pop_totale": int(row["pop_totale"]),
             "pop_65plus": int(row["pop_65plus"]),
             "part_65plus": float(row["part_65plus"]),
+            "pop_0_14": int(row.get("pop_0_14", 0)),
+            "pop_0_19": int(row.get("pop_0_19", 0)),
+            "pop_30_44": int(row.get("pop_30_44", 0)),
+            "part_0_14": float(row.get("part_0_14", 0.0)),
+            "part_0_19": float(row.get("part_0_19", 0.0)),
+            "ratio_jeunes_seniors": float(row.get("ratio_jeunes_seniors", 1.0)),
         }
         for _, row in df_pop.iterrows()
     }
@@ -114,7 +123,26 @@ def build_and_export_data(
     # 6. Income & purchasing power metrics (INSEE Filosofi)
     income_lookup = get_communal_income_lookup()
 
-    # 7. Build lookup of centroids for spatial radius calculation
+    # 7. Sports licenses & clubs lookup (Ministère des Sports / INJEP 2023)
+    try:
+        sports_lookup = get_sports_lookup(departments=departments)
+    except Exception as e:
+        logger.warning(f"Could not load sports lookup: {e}")
+        sports_lookup = {}
+
+    # Identify missing INSEE income codes for reliability flags
+    raw_income_path = DATA_DIR / "raw" / "revenu_communes.csv"
+    missing_insee_income = set()
+    if raw_income_path.exists():
+        try:
+            df_inc_raw = pd.read_csv(raw_income_path, sep=";", low_memory=False)
+            df_inc_raw["code"] = df_inc_raw["Code géographique"].astype(str).str.strip().str.zfill(5)
+            med_col = df_inc_raw.columns[7]
+            missing_insee_income = set(df_inc_raw[pd.to_numeric(df_inc_raw[med_col], errors="coerce").isna()]["code"].tolist())
+        except Exception as e:
+            logger.warning(f"Could not parse missing income codes: {e}")
+
+    # Build lookup of centroids for spatial radius calculation
     zone_centroids = []
     for feat in zone_features:
         props = feat["properties"]
@@ -130,7 +158,7 @@ def build_and_export_data(
             "pop_totale": p_info["pop_totale"],
         })
 
-    # 7. Calculate metrics for each zone
+    # Calculate metrics for each zone
     enriched_features = []
     for feat in zone_features:
         props = dict(feat["properties"])
@@ -140,10 +168,26 @@ def build_and_export_data(
         c_lon = float(props["centroide_lon"])
 
         # Demographic metrics
-        p_info = pop_by_code.get(code, {"pop_totale": 0, "pop_65plus": 0, "part_65plus": 0.0})
+        p_info = pop_by_code.get(code, {
+            "pop_totale": 0,
+            "pop_65plus": 0,
+            "part_65plus": 0.0,
+            "pop_0_14": 0,
+            "pop_0_19": 0,
+            "pop_30_44": 0,
+            "part_0_14": 0.0,
+            "part_0_19": 0.0,
+            "ratio_jeunes_seniors": 1.0,
+        })
         props["pop_totale"] = p_info["pop_totale"]
         props["pop_65plus"] = p_info["pop_65plus"]
         props["part_65plus"] = p_info["part_65plus"]
+        props["pop_0_14"] = p_info["pop_0_14"]
+        props["pop_0_19"] = p_info["pop_0_19"]
+        props["pop_30_44"] = p_info["pop_30_44"]
+        props["part_0_14"] = p_info["part_0_14"]
+        props["part_0_19"] = p_info["part_0_19"]
+        props["ratio_jeunes_seniors"] = p_info["ratio_jeunes_seniors"]
 
         # Podologists directly located in this zone
         in_zone_pod = sum(1 for p in pod_points if p["code_insee"] == code)
@@ -151,20 +195,16 @@ def build_and_export_data(
 
         # Radial competition metrics for each radius (1km, 2km, 3km)
         for r_km in RADII_KM:
-            # Count podologists within r_km of centroid
             podo_in_radius = sum(
                 1 for p in pod_points
                 if haversine_distance_km(c_lat, c_lon, p["lat"], p["lon"]) <= r_km
             )
-            # Sum 65+ senior population of all zones whose centroid is within r_km
             pop65_in_radius = sum(
                 zc["pop_65plus"] for zc in zone_centroids
                 if haversine_distance_km(c_lat, c_lon, zc["lat"], zc["lon"]) <= r_km
             )
-            # Fallback: ensure accessible population is at least the zone's own population
             pop65_in_radius = max(pop65_in_radius, p_info["pop_65plus"])
 
-            # Density per 10,000 seniors
             if pop65_in_radius > 0:
                 density = (podo_in_radius / pop65_in_radius) * 10000.0
             else:
@@ -200,6 +240,39 @@ def build_and_export_data(
         props["panier_semelles_estime"] = inc_data["panier_semelles_estime"]
         props["potentiel_semelles"] = inc_data["potentiel_semelles"]
 
+        # Sports and Clubs metrics (Ministère des Sports / INJEP 2023)
+        sp_data = sports_lookup.get(code, {
+            "nb_licencies_sport": 0,
+            "nb_clubs_sport": 0,
+            "licencies_jeunes": 0,
+            "licencies_football": 0,
+            "licencies_tennis": 0,
+            "licencies_athletisme": 0,
+            "licencies_basketball": 0,
+            "licencies_handball": 0,
+            "licencies_rugby": 0,
+            "licencies_running_sports": 0,
+        })
+        props["nb_licencies_sport"] = sp_data["nb_licencies_sport"]
+        props["nb_clubs_sport"] = sp_data["nb_clubs_sport"]
+        props["licencies_jeunes"] = sp_data["licencies_jeunes"]
+        props["licencies_football"] = sp_data["licencies_football"]
+        props["licencies_tennis"] = sp_data["licencies_tennis"]
+        props["licencies_athletisme"] = sp_data["licencies_athletisme"]
+        props["licencies_basketball"] = sp_data["licencies_basketball"]
+        props["licencies_handball"] = sp_data["licencies_handball"]
+        props["licencies_rugby"] = sp_data["licencies_rugby"]
+        props["licencies_running_sports"] = sp_data["licencies_running_sports"]
+        props["taux_licencies_sport"] = round((sp_data["nb_licencies_sport"] / max(1, props["pop_totale"])) * 100, 1)
+
+        # Reliability and transparency
+        has_inc = code not in missing_insee_income and props["pop_totale"] >= 150
+        props["has_insee_income"] = has_inc
+        props["fiabilite_revenu"] = "Certifié INSEE Filosofi (Officiel)" if has_inc else "Non diffusé par l'INSEE (secret fiscal < 150 hab)"
+        props["revenu_source"] = "INSEE Filosofi 2021 communal" if has_inc else "Estimation départementale"
+        props["qualite_donnees"] = "Certifiée (INSEE + RPPS + IDFM + Sports)" if has_inc else "Partielle (Revenu Insee non diffusé)"
+        props["ratio_hab_commune"] = props["pop_totale"] if in_zone_pod == 0 else round(props["pop_totale"] / in_zone_pod)
+
         enriched_features.append({
             "type": "Feature",
             "properties": props,
@@ -207,6 +280,7 @@ def build_and_export_data(
         })
 
     # Enrich zones with IDFM public transit network (stations, lines, travel times to Paris)
+    stations_features = []
     try:
         stations_features, _ = process_stations()
         process_lines()
@@ -214,12 +288,127 @@ def build_and_export_data(
     except Exception as e:
         logger.warning(f"Transit network enrichment failed: {e}")
 
+    # Enrich with territorial scale (diametre, superficie, poles de quartier)
+    stations_list = [
+        {
+            "nom": f["properties"]["nom"],
+            "mode": f["properties"].get("mode", "TRAIN"),
+            "lat": f["geometry"]["coordinates"][1],
+            "lon": f["geometry"]["coordinates"][0],
+        }
+        for f in stations_features
+    ]
+    podo_pts = [(p["id"], p["lat"], p["lon"]) for p in pod_points]
+
+    for feat in enriched_features:
+        props = feat["properties"]
+        geom = feat["geometry"]
+        poly = shape(geom)
+
+        coords = []
+        if geom["type"] == "Polygon":
+            coords = geom["coordinates"][0]
+        elif geom["type"] == "MultiPolygon":
+            for p in geom["coordinates"]:
+                coords.extend(p[0])
+
+        if coords:
+            lons = [pt[0] for pt in coords]
+            lats = [pt[1] for pt in coords]
+            span_x_km = (max(lons) - min(lons)) * 73.15
+            span_y_km = (max(lats) - min(lats)) * 111.19
+            diameter_km = round(max(span_x_km, span_y_km), 1)
+            area_km2 = round(poly.area * 73.15 * 111.19, 1)
+        else:
+            diameter_km = 2.0
+            area_km2 = 3.0
+
+        props["diametre_territoire_km"] = diameter_km
+        props["superficie_km2"] = area_km2
+
+        pop = props.get("pop_totale", 0)
+        is_large = pop >= 25000 or diameter_km >= 4.0 or area_km2 >= 10.0
+        props["is_grande_ville"] = is_large
+
+        # Poles for large cities
+        c_lat = props["centroide_lat"]
+        c_lon = props["centroide_lon"]
+        zone_stations = []
+        for st in stations_list:
+            pt = Point(st["lon"], st["lat"])
+            d_center = haversine_distance_km(c_lat, c_lon, st["lat"], st["lon"])
+            if d_center <= (diameter_km / 2.0 + 1.0):
+                if poly.contains(pt) or poly.distance(pt) * 111.0 <= 0.6:
+                    zone_stations.append(st)
+
+        seen_st_names = set()
+        unique_stations = []
+        for st in zone_stations:
+            if st["nom"] not in seen_st_names:
+                seen_st_names.add(st["nom"])
+                unique_stations.append(st)
+
+        poles = [{
+            "nom": f"Centre-Ville / Mairie ({props['nom']})",
+            "type": "CENTRE",
+            "mode": "MAIRIE",
+            "lat": c_lat,
+            "lon": c_lon,
+        }]
+        for st in unique_stations[:5]:
+            poles.append({
+                "nom": f"Gare {st['mode']} {st['nom']}",
+                "type": "GARE",
+                "mode": st["mode"],
+                "lat": st["lat"],
+                "lon": st["lon"],
+            })
+
+        poles_details = []
+        for pole in poles:
+            p_lat = pole["lat"]
+            p_lon = pole["lon"]
+            podos_1km = sum(1 for p_id, lat, lon in podo_pts if haversine_distance_km(p_lat, p_lon, lat, lon) <= 1.0)
+            if podos_1km == 0:
+                diag = "🛡️ Désert de quartier (Opportunité maximale)"
+                color = "#10b981"
+                status = "desert"
+            elif podos_1km == 1:
+                diag = "🟢 Très favorable (1 seul confrère à 1 km)"
+                color = "#10b981"
+                status = "favorable"
+            elif podos_1km == 2:
+                diag = "⚖️ Favorable (2 confrères à 1 km)"
+                color = "#0d9488"
+                status = "equilibre"
+            elif podos_1km <= 4:
+                diag = "🟡 Modéré (3 à 4 confrères à 1 km)"
+                color = "#0284c7"
+                status = "modere"
+            else:
+                diag = f"⚠️ Pôle saturé ({podos_1km} confrères à 1 km)"
+                color = "#ef4444"
+                status = "sature"
+
+            poles_details.append({
+                "nom": pole["nom"],
+                "mode": pole["mode"],
+                "type": pole["type"],
+                "lat": p_lat,
+                "lon": p_lon,
+                "podos_1km": podos_1km,
+                "diagnostic": diag,
+                "color": color,
+                "status": status,
+            })
+        props["poles_quartiers"] = poles_details
+
     zones_geojson = {
         "type": "FeatureCollection",
         "features": enriched_features,
     }
 
-    # 8. Anonymized Podologues GeoJSON FeatureCollection
+    # Anonymized Podologues GeoJSON FeatureCollection
     pod_features = [
         {
             "type": "Feature",
@@ -240,7 +429,7 @@ def build_and_export_data(
         "features": pod_features,
     }
 
-    # 9. Metadata JSON
+    # Metadata JSON
     metadata = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "departments": departments,
@@ -248,40 +437,54 @@ def build_and_export_data(
         "total_podologues_points": len(pod_features),
         "total_population": sum(f["properties"]["pop_totale"] for f in enriched_features),
         "total_65plus": sum(f["properties"]["pop_65plus"] for f in enriched_features),
+        "total_0_14": sum(f["properties"].get("pop_0_14", 0) for f in enriched_features),
+        "total_licencies_sport": sum(f["properties"].get("nb_licencies_sport", 0) for f in enriched_features),
+        "total_clubs_sport": sum(f["properties"].get("nb_clubs_sport", 0) for f in enriched_features),
         "radii_km": RADII_KM,
         "default_radius_km": 2,
-        "default_min_population": 5000,
+        "default_min_population": 2500,
         "diabetes_idf_avg_pct": round(DIABETES_IDF_AVG, 3),
         "sources": {
             "rpps": "ANS - Annuaire Santé 2026",
             "ban": "Base Adresse Nationale / API Adresse",
-            "insee": "Recensement Insee 2021",
+            "insee": "Recensement Insee 2021 (Population, Jeunes 0-14 & 0-19 ans)",
             "filosofi": "INSEE Filosofi 2021 (Revenus disponibles et pauvreté communaux)",
+            "sports": "Ministère des Sports / INJEP 2023 (Recensement des licences et clubs par fédération)",
             "ameli": "Assurance Maladie - Cartographie des pathologies 2023",
             "idfm": "Île-de-France Mobilités - Réseau ferré et stations 2026",
             "contours": "geo.api.gouv.fr & Open Data Ville de Paris",
         },
     }
 
-    # 10. Write outputs
+    # Write outputs (compact JSON to optimize bandwidth and parse speed)
     zones_file = output_dir / "zones.geojson"
     pod_file = output_dir / "podologues.geojson"
     meta_file = output_dir / "metadata.json"
 
     with open(zones_file, "w", encoding="utf-8") as f:
-        json.dump(zones_geojson, f, ensure_ascii=False)
+        json.dump(zones_geojson, f, separators=(",", ":"), ensure_ascii=False)
     logger.info(f"Exported zones GeoJSON ({len(enriched_features)} features) -> {zones_file} ({zones_file.stat().st_size / (1024*1024):.2f} MB)")
 
+    # Also sync to dist/data if dist exists
+    dist_data = output_dir.parent.parent / "dist" / "data"
+    if dist_data.exists():
+        with open(dist_data / "zones.geojson", "w", encoding="utf-8") as f:
+            json.dump(zones_geojson, f, separators=(",", ":"), ensure_ascii=False)
+
     with open(pod_file, "w", encoding="utf-8") as f:
-        json.dump(pod_geojson, f, ensure_ascii=False)
-    logger.info(f"Exported podologues GeoJSON ({len(pod_features)} points) -> {pod_file} ({pod_file.stat().st_size / 1024:.1f} KB)")
+        json.dump(pod_geojson, f, separators=(",", ":"), ensure_ascii=False)
+    if dist_data.exists():
+        with open(dist_data / "podologues.geojson", "w", encoding="utf-8") as f:
+            json.dump(pod_geojson, f, separators=(",", ":"), ensure_ascii=False)
 
     with open(meta_file, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2, ensure_ascii=False)
-    logger.info(f"Exported metadata JSON -> {meta_file}")
+    if dist_data.exists():
+        with open(dist_data / "metadata.json", "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
 
     return zones_geojson, pod_geojson, metadata
 
 
 if __name__ == "__main__":
-    build_and_export_data()
+    build_and_export_data(departments=["75", "77", "78", "91", "92", "93", "94", "95"])

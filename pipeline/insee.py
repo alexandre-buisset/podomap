@@ -41,7 +41,7 @@ def extract_insee_population(
                 f,
                 sep=";",
                 dtype={"COM": str, "IRIS": str},
-                usecols=["IRIS", "COM", "P21_POP", "P21_POP65P"],
+                usecols=["IRIS", "COM", "P21_POP", "P21_POP65P", "P21_POP0014", "P21_POP0019", "P21_POP3044"],
             )
 
     # Filter for target departments
@@ -55,8 +55,8 @@ def extract_insee_population(
     df_filtered["COM"] = df_filtered["COM"].replace(COMMUNE_MERGERS)
 
     # Clean numeric columns
-    df_filtered["P21_POP"] = pd.to_numeric(df_filtered["P21_POP"], errors="coerce").fillna(0)
-    df_filtered["P21_POP65P"] = pd.to_numeric(df_filtered["P21_POP65P"], errors="coerce").fillna(0)
+    for col in ["P21_POP", "P21_POP65P", "P21_POP0014", "P21_POP0019", "P21_POP3044"]:
+        df_filtered[col] = pd.to_numeric(df_filtered[col], errors="coerce").fillna(0)
 
     # Aggregate by commune (COM contains Paris arrondissements 75101-75120 and all other communes)
     com_agg = (
@@ -64,22 +64,37 @@ def extract_insee_population(
         .agg(
             pop_totale=("P21_POP", "sum"),
             pop_65plus=("P21_POP65P", "sum"),
+            pop_0_14=("P21_POP0014", "sum"),
+            pop_0_19=("P21_POP0019", "sum"),
+            pop_30_44=("P21_POP3044", "sum"),
         )
         .reset_index()
     )
 
     com_agg["pop_totale"] = com_agg["pop_totale"].round().astype(int)
     com_agg["pop_65plus"] = com_agg["pop_65plus"].round().astype(int)
+    com_agg["pop_0_14"] = com_agg["pop_0_14"].round().astype(int)
+    com_agg["pop_0_19"] = com_agg["pop_0_19"].round().astype(int)
+    com_agg["pop_30_44"] = com_agg["pop_30_44"].round().astype(int)
     com_agg["part_65plus"] = (
         (com_agg["pop_65plus"] / com_agg["pop_totale"].replace(0, 1))
     ).round(4)
+    com_agg["part_0_14"] = (
+        (com_agg["pop_0_14"] / com_agg["pop_totale"].replace(0, 1))
+    ).round(4)
+    com_agg["part_0_19"] = (
+        (com_agg["pop_0_19"] / com_agg["pop_totale"].replace(0, 1))
+    ).round(4)
+    com_agg["ratio_jeunes_seniors"] = (
+        (com_agg["pop_0_19"] / com_agg["pop_65plus"].replace(0, 1))
+    ).round(2)
     com_agg["dept"] = com_agg["COM"].str[:2]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     com_agg.to_csv(output_path, index=False, encoding="utf-8")
     logger.info(
         f"Saved population for {len(com_agg)} zones (total pop: {com_agg['pop_totale'].sum():,}, "
-        f"65+: {com_agg['pop_65plus'].sum():,}) to {output_path}"
+        f"0-14: {com_agg['pop_0_14'].sum():,}, 65+: {com_agg['pop_65plus'].sum():,}) to {output_path}"
     )
 
     return com_agg

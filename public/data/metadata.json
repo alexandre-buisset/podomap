@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T21:16:21.011764+00:00",
+  "generated_at": "2026-10-11T18:42:38.810561+00:00",
   "departments": [
     "75",
     "77",
@@ -14,19 +14,23 @@
   "total_podologues_points": 3147,
   "total_population": 12317128,
   "total_65plus": 1872659,
+  "total_0_14": 2359560,
+  "total_licencies_sport": 2530556,
+  "total_clubs_sport": 17161,
   "radii_km": [
     1,
     2,
     3
   ],
   "default_radius_km": 2,
-  "default_min_population": 5000,
+  "default_min_population": 2500,
   "diabetes_idf_avg_pct": 5.915,
   "sources": {
     "rpps": "ANS - Annuaire Santé 2026",
     "ban": "Base Adresse Nationale / API Adresse",
-    "insee": "Recensement Insee 2021",
+    "insee": "Recensement Insee 2021 (Population, Jeunes 0-14 & 0-19 ans)",
     "filosofi": "INSEE Filosofi 2021 (Revenus disponibles et pauvreté communaux)",
+    "sports": "Ministère des Sports / INJEP 2023 (Recensement des licences et clubs par fédération)",
     "ameli": "Assurance Maladie - Cartographie des pathologies 2023",
     "idfm": "Île-de-France Mobilités - Réseau ferré et stations 2026",
     "contours": "geo.api.gouv.fr & Open Data Ville de Paris"
