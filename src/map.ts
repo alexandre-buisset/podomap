@@ -305,9 +305,8 @@ export class MapManager {
       const score = typeof props.score === 'number' ? props.score.toFixed(1) : '-';
       const pop = props.pop_totale ? Number(props.pop_totale).toLocaleString('fr-FR') : '-';
       const pop65 = props.pop_65plus ? Number(props.pop_65plus).toLocaleString('fr-FR') : '-';
-      const part65 = props.part_65plus ? ((Number(props.part_65plus)) * 100).toFixed(1) : '-';
       const isExcluded = props.is_excluded === true || props.is_excluded === 'true';
-      const tempsParis = props.temps_paris_min ? `~${props.temps_paris_min} min vers Paris` : '';
+      const tempsParis = props.temps_paris_min ? `~${props.temps_paris_min} min` : '';
       const gareInfo = props.gare_nom ? `${props.gare_nom}` : '';
 
       const radius = this.currentRadiusKm || 2;
@@ -318,80 +317,79 @@ export class MapManager {
       const semellesPrice = props.panier_semelles_estime ? `~${props.panier_semelles_estime} €` : '-';
       const concColor = props.concurrence_color || '#0284c7';
 
-      let html = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px 6px; min-width: 220px; color: #0f172a;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-          <strong style="font-size: 0.95rem; color: #0f172a;">${props.nom}</strong>
-          <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">Dép. ${props.departement}</span>
+      let html = `<div class="map-hover-hud">
+        <div class="hud-header">
+          <div class="hud-title-col">
+            <h4 class="hud-commune-name">${props.nom}</h4>
+            <span class="hud-dept-chip">Dép. ${props.departement} • ${pop} hab.</span>
+          </div>
+          <div class="hud-score-chip" style="color: ${isExcluded ? '#94a3b8' : props.score_color || '#10b981'}; background: ${isExcluded ? '#94a3b818' : (props.score_color || '#10b981') + '20'}; border-color: ${isExcluded ? '#94a3b840' : (props.score_color || '#10b981') + '50'};">
+            <strong>${isExcluded ? `${score}*` : score}</strong>
+            <span>/ 100</span>
+          </div>
         </div>`;
 
       if (isExcluded) {
-        const reason = props.exclusion_reason || 'Commune non retenue par les filtres actifs';
-        html += `<div style="padding: 3px 6px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.74rem; font-weight: 600; margin-bottom: 6px;">
-          ⚠️ Hors sélection active : ${reason}
+        const reason = props.exclusion_reason || 'Commune non retenue par les filtres';
+        html += `<div class="hud-excluded-alert">
+          ⚠️ <strong>Hors sélection :</strong> ${reason}
         </div>`;
       } else {
-        html += `<div style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 3px 8px; border-radius: 4px; margin-bottom: 6px;">
-          <span style="font-size: 0.75rem; color: #166534; font-weight: 600;">Score Opportunité</span>
-          <strong style="font-size: 0.95rem; color: #15803d;">${score} / 100</strong>
+        const numScore = Number(props.score) || 0;
+        let badgeLabel = '🟢 Opportunité Optimale';
+        let badgeColor = '#10b981';
+        if (numScore >= 70) {
+          badgeLabel = '🌟 Opportunité Exceptionnelle';
+          badgeColor = '#10b981';
+        } else if (numScore >= 55) {
+          badgeLabel = '🟢 Favorable';
+          badgeColor = '#0d9488';
+        } else if (numScore >= 40) {
+          badgeLabel = '🔵 Équilibré';
+          badgeColor = '#0284c7';
+        } else if (numScore >= 25) {
+          badgeLabel = '🟡 Vigilance (Concurrence modérée)';
+          badgeColor = '#f59e0b';
+        } else {
+          badgeLabel = '🔴 Saturé / Risqué';
+          badgeColor = '#ef4444';
+        }
+
+        html += `<div class="hud-status-bar" style="color: ${badgeColor};">
+          <span>${badgeLabel}</span>
+          ${props.rank_dept ? `<span class="hud-rank-tag">#${props.rank_dept} dép.</span>` : ''}
         </div>`;
       }
 
       const podosComm = props.nb_podologues || 0;
-      const dens10kHab = props.densite_podo_10k_hab !== undefined
-        ? Number(props.densite_podo_10k_hab).toFixed(1)
-        : (props.pop_totale > 0 ? (Math.round((podosComm / props.pop_totale) * 10000 * 10) / 10).toFixed(1) : '0');
       const ratioLabel = props.ratio_hab_label || (podosComm === 0 ? 'Désert (0 cabinet)' : `1 pour ${Math.round(props.pop_totale / podosComm).toLocaleString('fr-FR')} hab.`);
       const ratioColor = props.ratio_hab_color || concColor;
 
-      html += `<div style="font-size: 0.74rem; line-height: 1.5; border-top: 1px solid #e2e8f0; padding-top: 5px;">
-        <div style="margin-bottom: 3px;">
-          <strong>👥 Podologues / Habitant :</strong>
-          <span style="color: ${ratioColor}; font-weight: 700;"> ${ratioLabel}</span>
-          <span style="color: #64748b;"> (${dens10kHab} / 10k hab.)</span>
+      html += `<div class="hud-kpi-grid">
+        <div class="hud-kpi-cell">
+          <span class="hud-kpi-lbl">🛡️ Concurrence (${radius}km)</span>
+          <strong class="hud-kpi-val" style="color: ${podoRadius <= 2 ? '#10b981' : podoRadius >= 15 ? '#ef4444' : '#f59e0b'};">
+            ${podoRadius} confrère${podoRadius > 1 ? 's' : ''}
+          </strong>
         </div>
-        <div style="margin-bottom: 3px;">
-          <strong>🛡️ Concurrence locale :</strong>
-          <span> ${podoRadius} confrère${podoRadius > 1 ? 's' : ''} à ${radius} km</span>
-        </div>`;
+        <div class="hud-kpi-cell">
+          <span class="hud-kpi-lbl">👥 Ratio & Seniors (65+)</span>
+          <strong class="hud-kpi-val" style="color: ${ratioColor};">${ratioLabel} (${pop65} sen.)</strong>
+        </div>
+        <div class="hud-kpi-cell">
+          <span class="hud-kpi-lbl">💎 Pouvoir d'achat</span>
+          <strong class="hud-kpi-val text-amber">${revMedian} (Semelles ${semellesPrice})</strong>
+        </div>
+        <div class="hud-kpi-cell">
+          <span class="hud-kpi-lbl">🚆 Paris & Gare</span>
+          <strong class="hud-kpi-val text-sky">${tempsParis ? tempsParis : 'Éloigné'}${gareInfo ? ` (${gareInfo})` : ''}</strong>
+        </div>
+      </div>
 
-      if (props.has_insee_income === false) {
-        html += `<div style="margin-bottom: 3px;">
-          <strong>💎 Revenu disponible :</strong>
-          <span style="color: #64748b; font-style: italic;"> Non diffusé INSEE (&lt; 150 hab)</span>
-        </div>`;
-      } else {
-        html += `<div style="margin-bottom: 3px;">
-          <strong>💎 Pouvoir d'achat :</strong>
-          <span> ${revMedian}</span>
-          <span style="color: #d97706; font-weight: 600;"> (Semelles: ${semellesPrice})</span>
-        </div>`;
-      }
-
-      html += `<div style="margin-bottom: 3px;">
-          <strong>👥 Demande Seniors :</strong>
-          <span> ${pop65} hab.</span>
-          <span style="color: #64748b;"> (${part65} % des ${pop} hab.)</span>
-        </div>`;
-
-      if (tempsParis || gareInfo) {
-        html += `<div style="margin-bottom: 3px;">
-          <strong>🚆 Transports :</strong>
-          <span> ${tempsParis ? tempsParis : ''}</span>
-          <span style="color: #64748b;">${gareInfo ? ` (${gareInfo})` : ''}</span>
-        </div>`;
-      }
-
-      if (podoRadius >= 20) {
-        html += `<div style="margin-top: 5px; padding: 3px 6px; background: #fee2e2; color: #b91c1c; border-radius: 4px; font-weight: 700; font-size: 0.71rem;">
-          ⚠️ Zone saturée (${podoRadius} confrères dans un rayon de ${radius} km)
-        </div>`;
-      } else if (podoRadius <= 2) {
-        html += `<div style="margin-top: 5px; padding: 3px 6px; background: #ecfdf5; color: #047857; border-radius: 4px; font-weight: 700; font-size: 0.71rem;">
-          🌟 Très faible concurrence (Désert podologique - Forte opportunité)
-        </div>`;
-      }
-
-      html += `</div></div>`;
+      <div class="hud-footer-hint">
+        <span>👆 Cliquer pour ouvrir la fiche complète & le simulateur</span>
+      </div>
+    </div>`;
 
       this.popup.setLngLat(e.lngLat).setHTML(html).addTo(this.map);
     });

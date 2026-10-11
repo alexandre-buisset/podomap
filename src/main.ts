@@ -148,6 +148,7 @@ class App {
       this.zonesGeoJSON.features,
       this.currentFilters
     );
+    this.uiManager.setAllZones(this.zonesGeoJSON.features);
 
     // Update map choropleth data
     this.mapManager.updateZonesData(this.zonesGeoJSON);

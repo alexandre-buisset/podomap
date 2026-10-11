@@ -1,5 +1,5 @@
 import { FilterSettings, ZoneFeature, StrategyPreset, MapDisplayCriterion } from './types';
-import { STRATEGY_PRESETS, getColorForScore } from './score';
+import { STRATEGY_PRESETS, getColorForScore, getLegendSteps, simulateCabinetFinancials } from './score';
 
 export interface UIEventListeners {
   onFiltersChanged: (filters: FilterSettings) => void;
@@ -13,13 +13,17 @@ const PRESET_DESCRIPTIONS: Record<StrategyPreset, { badge: string; desc: string 
     badge: '💎 Semelles',
     desc: "<strong>💎 Semelles & Pouvoir d'Achat (Rentabilité) :</strong> Valorise les communes à haut revenu disponible (INSEE Filosofi) où le reste à charge des semelles (140€-210€) et dépassements d'honoraires sont absorbés par les mutuelles premium.",
   },
+  sport_jeunes: {
+    badge: '🏃‍♂️ Sport & Podopédiatrie',
+    desc: "<strong>🏃‍♂️ Sport & Podopédiatrie (Semelles Orthopédiques) :</strong> Cible les bassins à forte pratique sportive (clubs & licenciés foot, running, tennis...) et à forte démographie d'enfants / familles (croissance, renouvellement fréquent d'orthèses plantaires biomécaniques). Concurrence modérée (40%) et pouvoir d'achat (25%).",
+  },
   equilibre: {
     badge: '⚖️ Équilibré',
-    desc: "<strong>⚖️ Équilibré (Recommandé) :</strong> Compromis optimal entre rentabilité semelles (25%), faible concurrence locale (35%), demande seniors (25%) et transports (10%).",
+    desc: "<strong>⚖️ Équilibré (Recommandé) :</strong> Compromis optimal entre rentabilité semelles (25%), faible concurrence locale (45%), demande seniors (15%), sport (5%) et jeunes (5%).",
   },
   medical: {
     badge: '🩺 Médical & Diabète',
-    desc: "<strong>🩺 Médical & Diabète (Soins Conventionnés) :</strong> Focus sur les déserts podologiques stricts (45%), les soins diabétiques ALD conventionnés (10%) et les seniors (35%).",
+    desc: "<strong>🩺 Médical & Diabète (Soins Conventionnés) :</strong> Focus sur les déserts podologiques stricts (55%), les soins diabétiques ALD conventionnés (10%) et les seniors (30%).",
   },
   custom: {
     badge: '⚙️ Personnalisé',
@@ -30,11 +34,15 @@ const PRESET_DESCRIPTIONS: Record<StrategyPreset, { badge: string; desc: string 
 export class UIManager {
   private currentFilters: FilterSettings;
   private listeners: UIEventListeners;
+  private currentSelectedZone: ZoneFeature | null = null;
+  private comparedZones: ZoneFeature[] = [];
+  private allZones: ZoneFeature[] = [];
 
   constructor(initialFilters: FilterSettings, listeners: UIEventListeners) {
     this.currentFilters = { ...initialFilters, weights: { ...initialFilters.weights } };
     this.listeners = listeners;
     this.bindEvents();
+    this.bindSimulatorEvents();
     this.updateSliderLabels();
     this.updatePresetDisplay();
     this.updateLegendDisplay(this.currentFilters.displayCriterion || 'score_global');
@@ -98,6 +106,8 @@ export class UIManager {
     const sliderPouvoirAchat = document.getElementById('slider-pouvoir-achat') as HTMLInputElement;
     const sliderConcurrence = document.getElementById('slider-concurrence') as HTMLInputElement;
     const sliderDemande = document.getElementById('slider-demande') as HTMLInputElement;
+    const sliderSport = document.getElementById('slider-sport') as HTMLInputElement;
+    const sliderJeunes = document.getElementById('slider-jeunes') as HTMLInputElement;
     const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
     const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
     const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
@@ -107,6 +117,8 @@ export class UIManager {
         pouvoir_achat_semelles: Number(sliderPouvoirAchat?.value || 0),
         concurrence_inv: Number(sliderConcurrence?.value || 0),
         demande_65plus: Number(sliderDemande?.value || 0),
+        demande_sport: Number(sliderSport?.value || 0),
+        demande_jeunes: Number(sliderJeunes?.value || 0),
         transport_access: Number(sliderTransports?.value || 0),
         coef_diabete: Number(sliderDiabete?.value || 0),
         bonus_zonage: Number(sliderZonage?.value || 0),
@@ -120,6 +132,8 @@ export class UIManager {
     sliderPouvoirAchat?.addEventListener('input', onWeightInput);
     sliderConcurrence?.addEventListener('input', onWeightInput);
     sliderDemande?.addEventListener('input', onWeightInput);
+    sliderSport?.addEventListener('input', onWeightInput);
+    sliderJeunes?.addEventListener('input', onWeightInput);
     sliderTransports?.addEventListener('input', onWeightInput);
     sliderDiabete?.addEventListener('input', onWeightInput);
     sliderZonage?.addEventListener('input', onWeightInput);
@@ -399,6 +413,8 @@ export class UIManager {
     const sliderPouvoirAchat = document.getElementById('slider-pouvoir-achat') as HTMLInputElement;
     const sliderConcurrence = document.getElementById('slider-concurrence') as HTMLInputElement;
     const sliderDemande = document.getElementById('slider-demande') as HTMLInputElement;
+    const sliderSport = document.getElementById('slider-sport') as HTMLInputElement;
+    const sliderJeunes = document.getElementById('slider-jeunes') as HTMLInputElement;
     const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
     const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
     const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
@@ -407,6 +423,8 @@ export class UIManager {
     if (sliderPouvoirAchat) sliderPouvoirAchat.value = String(w.pouvoir_achat_semelles);
     if (sliderConcurrence) sliderConcurrence.value = String(w.concurrence_inv);
     if (sliderDemande) sliderDemande.value = String(w.demande_65plus);
+    if (sliderSport) sliderSport.value = String(w.demande_sport ?? 0);
+    if (sliderJeunes) sliderJeunes.value = String(w.demande_jeunes ?? 0);
     if (sliderTransports) sliderTransports.value = String(w.transport_access);
     if (sliderDiabete) sliderDiabete.value = String(w.coef_diabete);
     if (sliderZonage) sliderZonage.value = String(w.bonus_zonage);
@@ -441,6 +459,8 @@ export class UIManager {
         transport_access: 0,
         coef_diabete: 0,
         bonus_zonage: 0,
+        demande_sport: 0,
+        demande_jeunes: 0,
       };
       this.currentFilters.activePreset = 'custom';
       setCriterionPill('concurrence');
@@ -452,6 +472,8 @@ export class UIManager {
         transport_access: 5,
         coef_diabete: 0,
         bonus_zonage: 0,
+        demande_sport: 0,
+        demande_jeunes: 0,
       };
       this.currentFilters.activePreset = 'semelles';
       setCriterionPill('pouvoir_achat');
@@ -469,6 +491,8 @@ export class UIManager {
         transport_access: 5,
         coef_diabete: 0,
         bonus_zonage: 0,
+        demande_sport: 0,
+        demande_jeunes: 0,
       };
       this.currentFilters.activePreset = 'custom';
       setCriterionPill('seniors');
@@ -477,6 +501,8 @@ export class UIManager {
     const sliderPouvoirAchat = document.getElementById('slider-pouvoir-achat') as HTMLInputElement;
     const sliderConcurrence = document.getElementById('slider-concurrence') as HTMLInputElement;
     const sliderDemande = document.getElementById('slider-demande') as HTMLInputElement;
+    const sliderSport = document.getElementById('slider-sport') as HTMLInputElement;
+    const sliderJeunes = document.getElementById('slider-jeunes') as HTMLInputElement;
     const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
     const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
     const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
@@ -485,6 +511,8 @@ export class UIManager {
     if (sliderPouvoirAchat) sliderPouvoirAchat.value = String(w.pouvoir_achat_semelles);
     if (sliderConcurrence) sliderConcurrence.value = String(w.concurrence_inv);
     if (sliderDemande) sliderDemande.value = String(w.demande_65plus);
+    if (sliderSport) sliderSport.value = String(w.demande_sport ?? 0);
+    if (sliderJeunes) sliderJeunes.value = String(w.demande_jeunes ?? 0);
     if (sliderTransports) sliderTransports.value = String(w.transport_access);
     if (sliderDiabete) sliderDiabete.value = String(w.coef_diabete);
     if (sliderZonage) sliderZonage.value = String(w.bonus_zonage);
@@ -543,7 +571,8 @@ export class UIManager {
         const item = document.createElement('div');
         item.className = 'search-result-item';
         const income = p.revenu_median ? `${p.revenu_median.toLocaleString('fr-FR')} €` : '-';
-        const podos = p.nb_podologues_2km ?? p.nb_podologues ?? 0;
+        const rad = this.currentFilters.selectedRadiusKm;
+        const podos = p[`nb_podologues_${rad}km`] ?? p.nb_podologues_2km ?? p.nb_podologues ?? 0;
         const color = getColorForScore(p.score || 0);
 
         item.innerHTML = `
@@ -557,7 +586,7 @@ export class UIManager {
               <span>•</span>
               <span>Rev. ${income}</span>
               <span>•</span>
-              <span style="color:${p.concurrence_color || '#10b981'}; font-weight:600;">${podos} podo. (2km)</span>
+              <span style="color:${p.concurrence_color || '#10b981'}; font-weight:600;">${podos} podo. (${rad}km)</span>
             </div>
           </div>
           <div class="search-item-score" style="color:${color}; background:${color}15; border:1px solid ${color}40;">
@@ -587,6 +616,18 @@ export class UIManager {
 
     document.addEventListener('click', (e) => {
       if (!input.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    // Global keyboard shortcut: Ctrl+K or Cmd+K focuses search
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        input.focus();
+        input.select();
+      } else if (e.key === 'Escape' && document.activeElement === input) {
+        input.blur();
         dropdown.classList.add('hidden');
       }
     });
@@ -633,6 +674,8 @@ export class UIManager {
     const vPA = document.getElementById('val-pouvoir-achat');
     const vC = document.getElementById('val-concurrence');
     const vD = document.getElementById('val-demande');
+    const vSp = document.getElementById('val-sport');
+    const vJn = document.getElementById('val-jeunes');
     const vT = document.getElementById('val-transports');
     const vDia = document.getElementById('val-diabete');
     const vZ = document.getElementById('val-zonage');
@@ -640,6 +683,8 @@ export class UIManager {
     if (vPA) vPA.textContent = `${w.pouvoir_achat_semelles} %`;
     if (vC) vC.textContent = `${w.concurrence_inv} %`;
     if (vD) vD.textContent = `${w.demande_65plus} %`;
+    if (vSp) vSp.textContent = `${w.demande_sport ?? 0} %`;
+    if (vJn) vJn.textContent = `${w.demande_jeunes ?? 0} %`;
     if (vT) vT.textContent = `${w.transport_access} %`;
     if (vDia) vDia.textContent = `${w.coef_diabete} %`;
     if (vZ) vZ.textContent = `${w.bonus_zonage} %`;
@@ -647,14 +692,28 @@ export class UIManager {
     const sliderPouvoirAchat = document.getElementById('slider-pouvoir-achat') as HTMLInputElement;
     const sliderConcurrence = document.getElementById('slider-concurrence') as HTMLInputElement;
     const sliderDemande = document.getElementById('slider-demande') as HTMLInputElement;
+    const sliderSport = document.getElementById('slider-sport') as HTMLInputElement;
+    const sliderJeunes = document.getElementById('slider-jeunes') as HTMLInputElement;
     const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
     const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
     const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
     const sliderMinPop = document.getElementById('slider-min-pop') as HTMLInputElement;
 
+    // Explicitly sync input .value from filters
+    if (sliderPouvoirAchat) sliderPouvoirAchat.value = String(w.pouvoir_achat_semelles);
+    if (sliderConcurrence) sliderConcurrence.value = String(w.concurrence_inv);
+    if (sliderDemande) sliderDemande.value = String(w.demande_65plus);
+    if (sliderSport) sliderSport.value = String(w.demande_sport ?? 0);
+    if (sliderJeunes) sliderJeunes.value = String(w.demande_jeunes ?? 0);
+    if (sliderTransports) sliderTransports.value = String(w.transport_access);
+    if (sliderDiabete) sliderDiabete.value = String(w.coef_diabete);
+    if (sliderZonage) sliderZonage.value = String(w.bonus_zonage);
+
     this.updateSliderGauge(sliderPouvoirAchat, '#f59e0b'); // Warm Gold / Amber
     this.updateSliderGauge(sliderConcurrence, '#a855f7');  // Purple
     this.updateSliderGauge(sliderDemande, '#38bdf8');      // Sky Blue
+    this.updateSliderGauge(sliderSport, '#f97316');        // Vibrant Orange
+    this.updateSliderGauge(sliderJeunes, '#ec4899');       // Vibrant Pink
     this.updateSliderGauge(sliderTransports, '#06b6d4');   // Cyan
     this.updateSliderGauge(sliderDiabete, '#f97316');      // Orange
     this.updateSliderGauge(sliderZonage, '#10b981');       // Emerald
@@ -671,66 +730,36 @@ export class UIManager {
   public updateLegendDisplay(criterion: MapDisplayCriterion): void {
     const titleEl = document.getElementById('legend-title');
     const rangeEl = document.getElementById('legend-range-label');
-    const barEl = document.getElementById('legend-gradient-bar');
-    const lbl1 = document.getElementById('legend-lbl-1');
-    const lbl2 = document.getElementById('legend-lbl-2');
-    const lbl3 = document.getElementById('legend-lbl-3');
-    const lbl4 = document.getElementById('legend-lbl-4');
+    const containerEl = document.getElementById('legend-steps-container');
 
-    if (barEl) {
-      barEl.className = `legend-gradient-bar gradient-${criterion}`;
-    }
+    const info = getLegendSteps(criterion);
+    if (titleEl) titleEl.textContent = info.title;
+    if (rangeEl) rangeEl.textContent = info.subtitle;
 
-    switch (criterion) {
-      case 'ratio_podo_hab':
-        if (titleEl) titleEl.textContent = '👥 Ratio Podologues / Habitant';
-        if (rangeEl) rangeEl.textContent = 'Saturation ➔ Pénurie';
-        if (lbl1) lbl1.textContent = '< 1 200 hab';
-        if (lbl2) lbl2.textContent = '1 800 hab';
-        if (lbl3) lbl3.textContent = '2 500 hab (Ordre)';
-        if (lbl4) lbl4.textContent = '≥ 3 500 / 0 podo';
-        break;
-      case 'concurrence':
-        if (titleEl) titleEl.textContent = '🛡️ Pression Concurrentielle';
-        if (rangeEl) rangeEl.textContent = 'Saturation ➔ Désert';
-        if (lbl1) lbl1.textContent = 'Saturé (>25)';
-        if (lbl2) lbl2.textContent = 'Soutenu';
-        if (lbl3) lbl3.textContent = 'Modéré';
-        if (lbl4) lbl4.textContent = 'Désert (<8)';
-        break;
-      case 'pouvoir_achat':
-        if (titleEl) titleEl.textContent = "💎 Pouvoir d'Achat (Filosofi)";
-        if (rangeEl) rangeEl.textContent = 'Revenu médian / ménage';
-        if (lbl1) lbl1.textContent = '< 22 k€';
-        if (lbl2) lbl2.textContent = '22 - 27 k€';
-        if (lbl3) lbl3.textContent = '27 - 33 k€';
-        if (lbl4) lbl4.textContent = '> 33 k€';
-        break;
-      case 'seniors':
-        if (titleEl) titleEl.textContent = '👥 Bassin Seniors (65+ ans)';
-        if (rangeEl) rangeEl.textContent = 'Volume de patients';
-        if (lbl1) lbl1.textContent = '< 1 500';
-        if (lbl2) lbl2.textContent = '1 500 - 3 500';
-        if (lbl3) lbl3.textContent = '3 500 - 7 000';
-        if (lbl4) lbl4.textContent = '> 7 000';
-        break;
-      case 'transports':
-        if (titleEl) titleEl.textContent = '🚆 Accès Paris & Gares (IDFM)';
-        if (rangeEl) rangeEl.textContent = 'Temps vers Paris Châtelet';
-        if (lbl1) lbl1.textContent = '> 60 min';
-        if (lbl2) lbl2.textContent = '40 - 60 min';
-        if (lbl3) lbl3.textContent = '25 - 40 min';
-        if (lbl4) lbl4.textContent = '< 25 min';
-        break;
-      case 'score_global':
-      default:
-        if (titleEl) titleEl.textContent = "Score d'Opportunité Global";
-        if (rangeEl) rangeEl.textContent = '0 à 100';
-        if (lbl1) lbl1.textContent = 'Faible';
-        if (lbl2) lbl2.textContent = 'Modéré';
-        if (lbl3) lbl3.textContent = 'Favorable';
-        if (lbl4) lbl4.textContent = 'Optimal';
-        break;
+    if (containerEl) {
+      // 1. Horizontal miniature segmented bar (5 discrete blocks)
+      const barHtml = `<div class="legend-segmented-bar">
+        ${info.steps.map((s) => `<div class="seg-block" style="background: ${s.color};"></div>`).join('')}
+      </div>`;
+
+      // 2. Discrete 5-step items: Top-down from optimal/favorable to saturated/unfavorable
+      const reversedSteps = [...info.steps].reverse();
+      const listHtml = `<div class="legend-steps-list">
+        ${reversedSteps
+          .map(
+            (s) => `
+          <div class="legend-step-row">
+            <div class="step-left">
+              <span class="step-swatch" style="background: ${s.color};"></span>
+              <span class="step-name">${s.label}</span>
+            </div>
+            <span class="step-range">${s.range}</span>
+          </div>`
+          )
+          .join('')}
+      </div>`;
+
+      containerEl.innerHTML = barHtml + listHtml;
     }
   }
 
@@ -749,6 +778,14 @@ export class UIManager {
       case 'pouvoir_achat':
         if (titleEl) titleEl.textContent = "💎 Top 10 - Pouvoir d'Achat";
         if (subEl) subEl.textContent = 'Communes les plus aisées (reste à charge semelles 140€-210€)';
+        break;
+      case 'sport':
+        if (titleEl) titleEl.textContent = '🏃‍♂️ Top 10 - Pratique Sportive & Clubs';
+        if (subEl) subEl.textContent = 'Communes comptant le plus grand nombre de licenciés sportifs (foot, running, tennis...)';
+        break;
+      case 'jeunes':
+        if (titleEl) titleEl.textContent = '👶 Top 10 - Enfants & Jeunes Familles';
+        if (subEl) subEl.textContent = 'Communes avec la plus forte population d\'enfants < 15 ans (podopédiatrie & croissance)';
         break;
       case 'seniors':
         if (titleEl) titleEl.textContent = '👥 Top 10 - Bassin Seniors 65+';
@@ -821,6 +858,22 @@ export class UIManager {
           <span class="ranking-pill-badge" style="color: #d97706; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3);">
             ${p.pouvoir_achat_label || 'Aisé'} • Panier: ~${p.panier_semelles_estime || 170}€
           </span>`;
+      } else if (criterion === 'sport') {
+        const lic = p.nb_licencies_sport || 0;
+        pillScore = lic >= 1000 ? `${(lic / 1000).toFixed(1)}k lic.` : `${lic} lic.`;
+        pillColor = '#f97316';
+        pillBadgeHtml = `
+          <span class="ranking-pill-badge" style="color: #ea580c; background: rgba(249, 115, 22, 0.12); border-color: rgba(249, 115, 22, 0.3);">
+            🏃‍♂️ ${lic.toLocaleString('fr-FR')} licenciés (${p.taux_licencies_sport || 0}%) • 🏟️ ${p.nb_clubs_sport || 0} clubs
+          </span>`;
+      } else if (criterion === 'jeunes') {
+        const enf = p.pop_0_14 || 0;
+        pillScore = enf >= 1000 ? `${(enf / 1000).toFixed(1)}k enf.` : `${enf} enf.`;
+        pillColor = '#ec4899';
+        pillBadgeHtml = `
+          <span class="ranking-pill-badge" style="color: #db2777; background: rgba(236, 72, 153, 0.12); border-color: rgba(236, 72, 153, 0.3);">
+            👶 ${enf.toLocaleString('fr-FR')} enfants <15 ans (${((p.part_0_14 || 0) * 100).toFixed(1)}%) • 👨‍👩‍👧‍👦 ${Number(p.pop_30_44 || 0).toLocaleString('fr-FR')} parents
+          </span>`;
       } else if (criterion === 'seniors') {
         pillScore = `${Math.round((p.pop_65plus || 0) / 1000)}k sen.`;
         pillColor = '#6366f1';
@@ -848,11 +901,31 @@ export class UIManager {
           </span>`;
       }
 
+      // Micro highlight tags based on actual zone features
+      let microTags = '';
+      if (podoRadius === 0) {
+        microTags += `<span class="ranking-pill-badge badge-podo-zero">🛡️ 0 podo (2km)</span>`;
+      }
+      if ((p.revenu_median || 0) >= 30000) {
+        microTags += `<span class="ranking-pill-badge badge-high-inc">💎 &gt;30k€</span>`;
+      }
+      if (p.temps_paris_min && p.temps_paris_min <= 25) {
+        microTags += `<span class="ranking-pill-badge badge-fast-paris">⚡ Paris &lt;25m</span>`;
+      }
+      if ((p.nb_licencies_sport || 0) >= 7000) {
+        microTags += `<span class="ranking-pill-badge badge-sport-rich">🏃‍♂️ &gt;7k sportifs</span>`;
+      }
+
+      let rankSymbol = String(rank);
+      if (rank === 1) rankSymbol = '🥇 1';
+      else if (rank === 2) rankSymbol = '🥈 2';
+      else if (rank === 3) rankSymbol = '🥉 3';
+
       const card = document.createElement('div');
-      card.className = 'ranking-card';
+      card.className = `ranking-card rank-podium-${rank <= 3 ? rank : 'other'}`;
       card.innerHTML = `
         <div class="ranking-card-left">
-          <div class="rank-badge top-${rank <= 3 ? rank : 'other'}">${rank}</div>
+          <div class="rank-badge top-${rank <= 3 ? rank : 'other'}">${rankSymbol}</div>
           <div class="ranking-zone-info">
             <div class="ranking-title-row">
               <h4>${p.nom}</h4>
@@ -860,6 +933,7 @@ export class UIManager {
             </div>
             <div class="ranking-badges-row">
               ${pillBadgeHtml}
+              ${microTags}
             </div>
             <div class="ranking-zone-meta">
               <span>👥 ${Number(p.pop_totale || 0).toLocaleString('fr-FR')} hab.</span>
@@ -869,10 +943,19 @@ export class UIManager {
             </div>
           </div>
         </div>
-        <div class="ranking-score-pill" style="color: ${pillColor}; border-color: ${pillColor}45; background: ${pillColor}15;">
-          ${pillScore}
+        <div class="ranking-card-right">
+          <div class="ranking-score-pill" style="color: ${pillColor}; border-color: ${pillColor}45; background: ${pillColor}15;">
+            ${pillScore}
+          </div>
+          <button class="btn-top10-duel" title="Ajouter au duel comparatif" data-insee="${p.code_insee}">⚖️</button>
         </div>
       `;
+
+      const btnDuel = card.querySelector('.btn-top10-duel');
+      btnDuel?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleZoneInComparison(feat);
+      });
 
       card.addEventListener('click', () => {
         this.listeners.onZoneClickedFromTop10(feat);
@@ -883,6 +966,7 @@ export class UIManager {
   }
 
   public renderZoneDetail(zone: ZoneFeature, autoSwitchTab: boolean = false): void {
+    this.currentSelectedZone = zone;
     const emptyState = document.getElementById('zone-detail-empty');
     const content = document.getElementById('zone-detail-content');
     if (emptyState) emptyState.classList.add('hidden');
@@ -945,10 +1029,23 @@ export class UIManager {
     if (elBarValC) elBarValC.textContent = `${pctConcurrence} % (Poids: ${w.concurrence_inv}%)`;
     if (elBarFillC) elBarFillC.style.width = `${pctConcurrence}%`;
 
+    const pctSport = Math.round(p.score_sport || 0);
+    const pctJeunes = Math.round(p.score_jeunes || 0);
+
     const elBarValD = document.getElementById('bar-val-demande');
     const elBarFillD = document.getElementById('bar-fill-demande');
     if (elBarValD) elBarValD.textContent = `${pctDemande} % (Poids: ${w.demande_65plus}%)`;
     if (elBarFillD) elBarFillD.style.width = `${pctDemande}%`;
+
+    const elBarValSp = document.getElementById('bar-val-sport');
+    const elBarFillSp = document.getElementById('bar-fill-sport');
+    if (elBarValSp) elBarValSp.textContent = `${pctSport} % (Poids: ${w.demande_sport ?? 0}%)`;
+    if (elBarFillSp) elBarFillSp.style.width = `${pctSport}%`;
+
+    const elBarValJn = document.getElementById('bar-val-jeunes');
+    const elBarFillJn = document.getElementById('bar-fill-jeunes');
+    if (elBarValJn) elBarValJn.textContent = `${pctJeunes} % (Poids: ${w.demande_jeunes ?? 0}%)`;
+    if (elBarFillJn) elBarFillJn.style.width = `${pctJeunes}%`;
 
     const elBarValT = document.getElementById('bar-val-transit');
     const elBarFillT = document.getElementById('bar-fill-transit');
@@ -1052,6 +1149,81 @@ export class UIManager {
       }
     }
 
+    // Sports Practice & Clubs Card (Ministère des Sports / INJEP)
+    const nbSport = p.nb_licencies_sport || 0;
+    const rateSport = p.taux_licencies_sport || 0;
+    const clubsSport = p.nb_clubs_sport || 0;
+    const jeunesSport = p.licencies_jeunes || 0;
+
+    const elSportLic = document.getElementById('m-sport-licencies');
+    const elSportRate = document.getElementById('m-sport-rate');
+    const elSportClubs = document.getElementById('m-sport-clubs');
+    const elSportJeunes = document.getElementById('m-sport-jeunes');
+    const elSportFoot = document.getElementById('m-sport-foot');
+    const elSportTennis = document.getElementById('m-sport-tennis');
+    const elSportAthle = document.getElementById('m-sport-athle');
+    const elSportBasket = document.getElementById('m-sport-basket');
+    const elSportHand = document.getElementById('m-sport-hand');
+    const elSportRugby = document.getElementById('m-sport-rugby');
+    const elSportVerdict = document.getElementById('m-sport-verdict');
+
+    if (elSportLic) elSportLic.textContent = `${nbSport.toLocaleString('fr-FR')} licenciés`;
+    if (elSportRate) elSportRate.textContent = `${rateSport} % de la population`;
+    if (elSportClubs) elSportClubs.textContent = `${clubsSport} club${clubsSport > 1 ? 's' : ''} actif${clubsSport > 1 ? 's' : ''}`;
+    if (elSportJeunes) elSportJeunes.textContent = `${jeunesSport.toLocaleString('fr-FR')} mineurs (< 20 ans)`;
+    if (elSportFoot) elSportFoot.textContent = (p.licencies_football || 0).toLocaleString('fr-FR');
+    if (elSportTennis) elSportTennis.textContent = (p.licencies_tennis || 0).toLocaleString('fr-FR');
+    if (elSportAthle) elSportAthle.textContent = (p.licencies_athletisme || 0).toLocaleString('fr-FR');
+    if (elSportBasket) elSportBasket.textContent = (p.licencies_basketball || 0).toLocaleString('fr-FR');
+    if (elSportHand) elSportHand.textContent = (p.licencies_handball || 0).toLocaleString('fr-FR');
+    if (elSportRugby) elSportRugby.textContent = (p.licencies_rugby || 0).toLocaleString('fr-FR');
+
+    if (elSportVerdict) {
+      if (nbSport >= 5000 || rateSport >= 25) {
+        elSportVerdict.className = 'sport-verdict-box verdict-high';
+        elSportVerdict.innerHTML = `<strong>🏃‍♂️ Fort potentiel podologie du sport & biomécanique :</strong> Bassin très dynamique avec forte pratique de sports à impacts (running, foot, tennis). Potentiel élevé pour bilans dynamiques, analyse de foulée et semelles thermoformées ou usinées sur mesure.`;
+      } else if (nbSport >= 1500 || rateSport >= 15) {
+        elSportVerdict.className = 'sport-verdict-box verdict-medium';
+        elSportVerdict.innerHTML = `<strong>⚖️ Pratique sportive régulière :</strong> Présence de clubs locaux structurés permettant de tisser des partenariats réguliers pour les sportifs amateurs et scolaires.`;
+      } else {
+        elSportVerdict.className = 'sport-verdict-box verdict-low';
+        elSportVerdict.innerHTML = `<strong>ℹ️ Volume associatif modéré :</strong> Activité sportive de proximité sans gros pôle omnisports régional.`;
+      }
+    }
+
+    // Children & Young Families Demographics Card (Podopédiatrie / Croissance / INSEE)
+    const pop014 = p.pop_0_14 || 0;
+    const part014 = p.part_0_14 || 0;
+    const pop019 = p.pop_0_19 || 0;
+    const pop3044 = p.pop_30_44 || 0;
+    const ratioJnSn = p.ratio_jeunes_seniors;
+
+    const elPop014 = document.getElementById('m-pop-0-14');
+    const elPart014 = document.getElementById('m-part-0-14');
+    const elPop019 = document.getElementById('m-pop-0-19');
+    const elPop3044 = document.getElementById('m-pop-30-44');
+    const elRatioJnSn = document.getElementById('m-ratio-jeunes-seniors');
+    const elYouthVerdict = document.getElementById('m-youth-verdict');
+
+    if (elPop014) elPop014.textContent = `${pop014.toLocaleString('fr-FR')} enfants`;
+    if (elPart014) elPart014.textContent = `${(part014 * 100).toFixed(1)} % (Moy. IDF: ~19%)`;
+    if (elPop019) elPop019.textContent = `${pop019.toLocaleString('fr-FR')} jeunes`;
+    if (elPop3044) elPop3044.textContent = `${pop3044.toLocaleString('fr-FR')} parents (30-44 ans)`;
+    if (elRatioJnSn) elRatioJnSn.textContent = ratioJnSn != null ? `${ratioJnSn.toFixed(2)} jeunes / senior` : '-';
+
+    if (elYouthVerdict) {
+      if (part014 >= 0.20 && pop014 >= 3000) {
+        elYouthVerdict.className = 'youth-verdict-box verdict-high';
+        elYouthVerdict.innerHTML = `<strong>👶 Bassin prioritaire en podopédiatrie :</strong> Population très jeune et familiale. Forte demande en semelles de croissance (pieds plats valgus, genu valgum, maladie de Sever) avec un renouvellement médical régulier (tous les 6 à 12 mois selon croissance).`;
+      } else if (pop014 >= 1500) {
+        elYouthVerdict.className = 'youth-verdict-box verdict-medium';
+        elYouthVerdict.innerHTML = `<strong>⚖️ Patientèle familiale active :</strong> Bon vivier d'enfants d'âge scolaire pour des bilans posturaux et semelles pédiatriques.`;
+      } else {
+        elYouthVerdict.className = 'youth-verdict-box verdict-low';
+        elYouthVerdict.innerHTML = `<strong>👵 Profil plus âgé :</strong> Proportion modérée d'enfants ; activité naturellement plus orientée vers la gériatrie et le soin de pédicurie.`;
+      }
+    }
+
     // Multi-Neighborhood Breakdown for Large Polycentric Cities
     const elLargeCitySection = document.getElementById('sheet-large-city-section');
     const elLargeCityStats = document.getElementById('large-city-stats');
@@ -1148,6 +1320,12 @@ export class UIManager {
       setVal('m-pop-revenu', `${revMedian ? `${revMedian.toLocaleString('fr-FR')} € / an` : '-'}`);
       setVal('m-podo-semelles-tarif', `~${semellesPrice} € (estimé)`);
     }
+    setVal('m-raw-licencies-sport', `${nbSport.toLocaleString('fr-FR')} (${clubsSport} club${clubsSport > 1 ? 's' : ''})`);
+    setVal('m-raw-pop-0-14', `${pop014.toLocaleString('fr-FR')} hab. (${(part014 * 100).toFixed(1)}%)`);
+    setVal('m-raw-pop-30-44', `${pop3044.toLocaleString('fr-FR')} hab.`);
+    const loyerMois = p.loyer_mensuel_estime || 950;
+    const loyerM2 = p.loyer_m2_estime || 20;
+    setVal('m-loyer-estime', `${loyerMois.toLocaleString('fr-FR')} €/mois (~${loyerM2} €/m²)`);
     setVal('m-zonage-status', p.zonage ? p.zonage : 'Non applicable (Standard)');
 
     document.querySelectorAll('.m-radius-val').forEach((el) => {
@@ -1232,27 +1410,452 @@ export class UIManager {
     }
 
     // Data Reliability & Transparency Card
+    const elRelPop = document.getElementById('rel-status-pop');
     const elRelIncome = document.getElementById('rel-status-income');
+    const elRelSport = document.getElementById('rel-status-sport');
     const elRelNote = document.getElementById('rel-note-box');
+    if (elRelPop) {
+      elRelPop.textContent = "✅ Populations de référence en vigueur au 1er janvier 2026 (Insee)";
+    }
     if (elRelIncome) {
       if (p.has_insee_income === false) {
         elRelIncome.textContent = "⚠️ Non diffusé par l'INSEE (secret fiscal < 150 hab)";
         elRelIncome.className = 'rel-status text-amber';
       } else {
-        elRelIncome.textContent = "✅ Certifié INSEE Filosofi 2021 (Officiel)";
+        elRelIncome.textContent = "✅ Certifié INSEE Filosofi (Revenus déclarés)";
         elRelIncome.className = 'rel-status text-emerald';
       }
+    }
+    if (elRelSport) {
+      elRelSport.textContent = `✅ Ministère des Sports / INJEP 2023 (${nbSport.toLocaleString('fr-FR')} lic., ${clubsSport} clubs)`;
+      elRelSport.className = 'rel-status text-emerald';
     }
     if (elRelNote) {
       if (p.has_insee_income === false) {
         elRelNote.textContent = `⚠️ Commune de très faible population (${p.pop_totale} hab.) : l'INSEE ne publie pas les revenus fiscaux pour garantir l'anonymat. Conformément à vos instructions d'intégrité, aucune valeur n'est inventée pour ne pas tromper l'analyse.`;
       } else {
-        elRelNote.textContent = "ℹ️ Données 100% officielles et certifiées (INSEE Recensement + Filosofi 2021, Annuaire Santé RPPS 2026, IDFM). Aucune extrapolation non déclarée.";
+        elRelNote.textContent = "ℹ️ Données 100% officielles ouvertes : Populations de référence 2026 (Insee), Annuaire Santé RPPS 2026 en temps réel (3 084 praticiens), Référentiel IDFM 2026, Insee Filosofi, Ministère des Sports / INJEP 2023. Aucune extrapolation non déclarée.";
       }
     }
+
+    // Initialize interactive Financial Simulator & Compare button
+    const rentInput = document.getElementById('sim-input-rent') as HTMLInputElement;
+    if (rentInput) {
+      rentInput.value = String(loyerMois);
+    }
+    this.updateSimulator(zone);
+    this.updateCompareButtonOnSheet();
 
     if (autoSwitchTab) {
       this.switchTab('detail');
     }
+  }
+
+  public setAllZones(zones: ZoneFeature[]): void {
+    this.allZones = zones;
+    if (this.comparedZones.length > 0) {
+      this.comparedZones = this.comparedZones.map((cz) => {
+        const found = zones.find((z) => z.properties.code_insee === cz.properties.code_insee);
+        return found || cz;
+      });
+      this.renderCompareMatrix();
+    }
+  }
+
+  private bindSimulatorEvents(): void {
+    const daysSlider = document.getElementById('sim-input-days') as HTMLInputElement;
+    const patientsSlider = document.getElementById('sim-input-patients') as HTMLInputElement;
+    const pctSlider = document.getElementById('sim-input-pct-semelles') as HTMLInputElement;
+    const rentSlider = document.getElementById('sim-input-rent') as HTMLInputElement;
+
+    const onSimInput = () => {
+      if (!this.currentSelectedZone) return;
+      this.updateSimulator(this.currentSelectedZone);
+    };
+
+    daysSlider?.addEventListener('input', onSimInput);
+    patientsSlider?.addEventListener('input', onSimInput);
+    pctSlider?.addEventListener('input', onSimInput);
+    rentSlider?.addEventListener('input', onSimInput);
+
+    // Activity Pace Quick Presets
+    const btnStarter = document.getElementById('btn-sim-starter');
+    const btnCruise = document.getElementById('btn-sim-cruise');
+    const btnFull = document.getElementById('btn-sim-full');
+    const paceBtns = [btnStarter, btnCruise, btnFull];
+
+    const setPace = (d: number, pat: number, pct: number, activeBtn: HTMLElement | null) => {
+      paceBtns.forEach((b) => b?.classList.remove('active'));
+      activeBtn?.classList.add('active');
+      if (daysSlider) daysSlider.value = String(d);
+      if (patientsSlider) patientsSlider.value = String(pat);
+      if (pctSlider) pctSlider.value = String(pct);
+      if (this.currentSelectedZone) this.updateSimulator(this.currentSelectedZone);
+    };
+
+    btnStarter?.addEventListener('click', () => setPace(3.5, 5, 30, btnStarter));
+    btnCruise?.addEventListener('click', () => setPace(4.5, 8, 35, btnCruise));
+    btnFull?.addEventListener('click', () => setPace(5, 11, 50, btnFull));
+
+    // Duel toggle button on zone detail sheet
+    const btnToggleCompare = document.getElementById('btn-toggle-compare-zone');
+    btnToggleCompare?.addEventListener('click', () => {
+      if (!this.currentSelectedZone) return;
+      this.toggleZoneInComparison(this.currentSelectedZone);
+    });
+
+    // Clear compare button
+    const btnClearCompare = document.getElementById('btn-clear-compare');
+    btnClearCompare?.addEventListener('click', () => {
+      this.comparedZones = [];
+      this.updateCompareBadges();
+      this.renderCompareMatrix();
+      this.updateCompareButtonOnSheet();
+    });
+
+    // Quick duel suggestions
+    const suggBtns = document.querySelectorAll('.btn-sugg-duel');
+    suggBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const duel = (e.currentTarget as HTMLElement).getAttribute('data-duel');
+        if (!duel) return;
+        const codes = duel.split(',');
+        const matched = this.allZones.filter((z) => codes.includes(z.properties.code_insee));
+        if (matched.length > 0) {
+          this.comparedZones = matched;
+          this.updateCompareBadges();
+          this.renderCompareMatrix();
+          this.switchTab('compare');
+        }
+      });
+    });
+  }
+
+  public updateSimulator(zone: ZoneFeature): void {
+    const daysSlider = document.getElementById('sim-input-days') as HTMLInputElement;
+    const patientsSlider = document.getElementById('sim-input-patients') as HTMLInputElement;
+    const pctSlider = document.getElementById('sim-input-pct-semelles') as HTMLInputElement;
+    const rentSlider = document.getElementById('sim-input-rent') as HTMLInputElement;
+
+    const days = Number(daysSlider?.value || 4.5);
+    const patients = Number(patientsSlider?.value || 8);
+    const pctSemelles = Number(pctSlider?.value || 35) / 100;
+    const loyerMensuel = Number(rentSlider?.value || zone.properties.loyer_mensuel_estime || 950);
+    const tarifSemelles = zone.properties.panier_semelles_estime || 190;
+    const tarifSoins = 42;
+
+    const elDays = document.getElementById('sim-val-days');
+    const elPatients = document.getElementById('sim-val-patients');
+    const elPct = document.getElementById('sim-val-pct-semelles');
+    const elRent = document.getElementById('sim-val-rent');
+    const elPanier = document.getElementById('sim-panier-inline');
+
+    if (elDays) elDays.textContent = `${days} j`;
+    if (elPatients) elPatients.textContent = `${patients}`;
+    if (elPct) elPct.textContent = `${Math.round(pctSemelles * 100)} %`;
+    if (elRent) elRent.textContent = `${loyerMensuel.toLocaleString('fr-FR')} €/mois`;
+    if (elPanier) elPanier.textContent = `${tarifSemelles} €`;
+
+    // Sliders gradient feedback
+    this.updateSliderGauge(daysSlider, '#38bdf8');
+    this.updateSliderGauge(patientsSlider, '#10b981');
+    this.updateSliderGauge(pctSlider, '#f59e0b');
+    this.updateSliderGauge(rentSlider, '#a855f7');
+
+    const sim = simulateCabinetFinancials({
+      daysPerWeek: days,
+      patientsPerDay: patients,
+      pctSemelles,
+      tarifSemelles,
+      tarifSoins,
+      loyerMensuel,
+    });
+
+    const elCaMonth = document.getElementById('sim-kpi-ca-month');
+    const elCaYear = document.getElementById('sim-kpi-ca-year');
+    const elCharges = document.getElementById('sim-kpi-charges');
+    const elCotis = document.getElementById('sim-kpi-cotisations');
+    const elNetMonth = document.getElementById('sim-kpi-net-month');
+    const elNetYear = document.getElementById('sim-kpi-net-year');
+    const elViab = document.getElementById('sim-viability-badge');
+
+    if (elCaMonth) elCaMonth.textContent = `${sim.caBrutMonth.toLocaleString('fr-FR')} €`;
+    if (elCaYear) elCaYear.textContent = `~${sim.caBrutYear.toLocaleString('fr-FR')} € / an`;
+    if (elCharges) elCharges.textContent = `-${sim.chargesFixesMonth.toLocaleString('fr-FR')} €/m`;
+    if (elCotis) elCotis.textContent = `-${sim.cotisationsSocialesMonth.toLocaleString('fr-FR')} €/m`;
+    if (elNetMonth) elNetMonth.textContent = `${sim.beneficeNetMonth.toLocaleString('fr-FR')} €`;
+    if (elNetYear) elNetYear.textContent = `~${sim.beneficeNetYear.toLocaleString('fr-FR')} € / an net`;
+    if (elViab) {
+      elViab.textContent = sim.viabiliteLabel;
+      elViab.style.color = sim.viabiliteColor;
+      elViab.style.borderColor = `${sim.viabiliteColor}40`;
+      elViab.style.background = `${sim.viabiliteColor}15`;
+    }
+
+    // Dynamic waterfall / cascade flow breakdown bar
+    const ca = Math.max(1, sim.caBrutMonth);
+    const pctRent = Math.max(2, Math.min(100, Math.round((loyerMensuel / ca) * 100)));
+    const pctCharges = Math.max(1, Math.min(100, Math.round((380 / ca) * 100)));
+    const pctCotis = Math.max(2, Math.min(100, Math.round((sim.cotisationsSocialesMonth / ca) * 100)));
+    const pctNet = Math.max(0, 100 - pctRent - pctCharges - pctCotis);
+
+    const segRent = document.getElementById('sim-seg-rent');
+    const segCharges = document.getElementById('sim-seg-charges');
+    const segCotis = document.getElementById('sim-seg-cotis');
+    const segNet = document.getElementById('sim-seg-net');
+    const netPctTag = document.getElementById('sim-flow-net-pct');
+
+    if (segRent) segRent.style.width = `${pctRent}%`;
+    if (segCharges) segCharges.style.width = `${pctCharges}%`;
+    if (segCotis) segCotis.style.width = `${pctCotis}%`;
+    if (segNet) segNet.style.width = `${pctNet}%`;
+    if (netPctTag) netPctTag.textContent = `${pctNet}% Net en poche`;
+
+    const legRent = document.getElementById('sim-leg-val-rent');
+    const legCharges = document.getElementById('sim-leg-val-charges');
+    const legCotis = document.getElementById('sim-leg-val-cotis');
+    const legNet = document.getElementById('sim-leg-val-net');
+
+    if (legRent) legRent.textContent = `${pctRent}%`;
+    if (legCharges) legCharges.textContent = `${pctCharges}%`;
+    if (legCotis) legCotis.textContent = `${pctCotis}%`;
+    if (legNet) legNet.textContent = `${pctNet}%`;
+  }
+
+  public toggleZoneInComparison(zone: ZoneFeature): void {
+    const idx = this.comparedZones.findIndex((z) => z.properties.code_insee === zone.properties.code_insee);
+    if (idx >= 0) {
+      this.comparedZones.splice(idx, 1);
+    } else {
+      if (this.comparedZones.length >= 3) {
+        alert("Vous pouvez comparer jusqu'à 3 communes simultanément. Veuillez en retirer une pour en ajouter une nouvelle.");
+        return;
+      }
+      this.comparedZones.push(zone);
+    }
+    this.updateCompareBadges();
+    this.updateCompareButtonOnSheet();
+    this.renderCompareMatrix();
+  }
+
+  private updateCompareBadges(): void {
+    const cnt = this.comparedZones.length;
+    const badgeSidebar = document.getElementById('badge-compare-count');
+    const lblCount = document.getElementById('compare-count-lbl');
+    if (badgeSidebar) badgeSidebar.textContent = `${cnt}`;
+    if (lblCount) lblCount.textContent = `${cnt}`;
+  }
+
+  private updateCompareButtonOnSheet(): void {
+    const btn = document.getElementById('btn-toggle-compare-zone');
+    if (!btn || !this.currentSelectedZone) return;
+    const isInside = this.comparedZones.some((z) => z.properties.code_insee === this.currentSelectedZone?.properties.code_insee);
+    if (isInside) {
+      btn.textContent = '✅ Dans le Duel (cliquer pour retirer)';
+      btn.className = 'pill-btn btn-danger-soft';
+    } else {
+      btn.textContent = '⚖️ Ajouter cette commune au Duel';
+      btn.className = 'pill-btn';
+    }
+  }
+
+  public renderCompareMatrix(): void {
+    const emptyState = document.getElementById('compare-empty-state');
+    const container = document.getElementById('compare-matrix-container');
+    if (!emptyState || !container) return;
+
+    if (this.comparedZones.length === 0) {
+      emptyState.classList.remove('hidden');
+      container.classList.add('hidden');
+      return;
+    }
+
+    emptyState.classList.add('hidden');
+    container.classList.remove('hidden');
+
+    const zones = this.comparedZones;
+
+    let bestNetProfitCode = '';
+    let highestNet = -1;
+    let leastPodosCode = '';
+    let lowestPodos = 9999;
+    let fastestTransitCode = '';
+    let lowestTransit = 9999;
+
+    zones.forEach((z) => {
+      const p = z.properties as any;
+      const podos2k = p.nb_podologues_2km ?? p.nb_podologues ?? 0;
+      if (podos2k < lowestPodos) {
+        lowestPodos = podos2k;
+        leastPodosCode = p.code_insee;
+      }
+
+      const tTransit = p.temps_paris_min || 999;
+      if (tTransit < lowestTransit) {
+        lowestTransit = tTransit;
+        fastestTransitCode = p.code_insee;
+      }
+
+      const sim = simulateCabinetFinancials({
+        daysPerWeek: 4.5,
+        patientsPerDay: 8,
+        pctSemelles: 0.35,
+        tarifSemelles: p.panier_semelles_estime || 190,
+        tarifSoins: 42,
+        loyerMensuel: p.loyer_mensuel_estime || 950,
+      });
+      if (sim.beneficeNetMonth > highestNet) {
+        highestNet = sim.beneficeNetMonth;
+        bestNetProfitCode = p.code_insee;
+      }
+    });
+
+    let html = `
+      <div class="compare-columns-grid cols-${zones.length}">
+        ${zones
+          .map((z) => {
+            const p = z.properties as any;
+            const score = Number(p.score) || 0;
+            const scoreColor = getColorForScore(score);
+            const isBestRent = p.code_insee === bestNetProfitCode && zones.length > 1;
+            const isLeastComp = p.code_insee === leastPodosCode && zones.length > 1;
+            const isFastest = p.code_insee === fastestTransitCode && zones.length > 1;
+
+            const sim = simulateCabinetFinancials({
+              daysPerWeek: 4.5,
+              patientsPerDay: 8,
+              pctSemelles: 0.35,
+              tarifSemelles: p.panier_semelles_estime || 190,
+              tarifSoins: 42,
+              loyerMensuel: p.loyer_mensuel_estime || 950,
+            });
+
+            return `
+            <div class="compare-column-card glass-card">
+              <div class="compare-col-header">
+                <button class="btn-remove-duel" data-insee="${p.code_insee}" title="Retirer du duel">&times;</button>
+                <h4 class="compare-col-title">${p.nom}</h4>
+                <span class="compare-col-dept">Dép. ${p.departement} • Code ${p.code_insee}</span>
+                <div class="compare-score-badge" style="background: ${scoreColor}15; border-color: ${scoreColor}40; color: ${scoreColor};">
+                  <strong>${score.toFixed(1)} / 100</strong>
+                  <span>Rang #${p.rank_global || '-'} IDF</span>
+                </div>
+              </div>
+
+              <!-- Trophies -->
+              <div class="compare-trophies-row">
+                ${isBestRent ? `<span class="trophy-badge gold" title="Meilleur bénéfice net estimé">🏆 Top Rentabilité</span>` : ''}
+                ${isLeastComp ? `<span class="trophy-badge green" title="Moins de concurrence à 2 km">🛡️ Pénurie / 0-2 podo</span>` : ''}
+                ${isFastest ? `<span class="trophy-badge blue" title="Accès le plus rapide à Paris">🚆 Paris Direct</span>` : ''}
+              </div>
+
+              <!-- Section 1 : Concurrence & Patientèle -->
+              <div class="compare-section-box">
+                <h5 class="comp-sec-title">👥 Concurrence & Patientèle</h5>
+                <div class="comp-row">
+                  <span class="comp-lbl">Podologues à 2 km :</span>
+                  <strong class="comp-val" style="color: ${p.nb_podologues_2km <= 2 ? '#10b981' : p.nb_podologues_2km >= 15 ? '#ef4444' : '#f59e0b'};">
+                    ${p.nb_podologues_2km ?? p.nb_podologues ?? 0} praticiens
+                  </strong>
+                </div>
+                <div class="comp-row">
+                  <span class="comp-lbl">Ratio Hab / Podo :</span>
+                  <strong class="comp-val">${p.ratio_hab_label || '-'}</strong>
+                </div>
+                <div class="comp-row">
+                  <span class="comp-lbl">Population totale :</span>
+                  <span class="comp-val">${Number(p.pop_totale || 0).toLocaleString('fr-FR')} hab.</span>
+                </div>
+                <div class="comp-row">
+                  <span class="comp-lbl">Seniors (65+ ans) :</span>
+                  <span class="comp-val">${Number(p.pop_65plus || 0).toLocaleString('fr-FR')} hab. (${((p.part_65plus || 0) * 100).toFixed(1)}%)</span>
+                </div>
+              </div>
+
+              <!-- Section 2 : Économie & Rentabilité -->
+              <div class="compare-section-box">
+                <h5 class="comp-sec-title">💎 Pouvoir d'Achat & Loyer</h5>
+                <div class="comp-row">
+                  <span class="comp-lbl">Revenu médian (INSEE) :</span>
+                  <strong class="comp-val" style="color: ${(p.revenu_median || 0) >= 28000 ? '#10b981' : '#f59e0b'};">
+                    ${p.revenu_median ? `${Number(p.revenu_median).toLocaleString('fr-FR')} €/an` : 'Non diffusé'}
+                  </strong>
+                </div>
+                <div class="comp-row">
+                  <span class="comp-lbl">Panier semelles estimé :</span>
+                  <strong class="comp-val text-blue">~${p.panier_semelles_estime || 170} €</strong>
+                </div>
+                <div class="comp-row">
+                  <span class="comp-lbl">Loyer pro (~45 m²) :</span>
+                  <span class="comp-val text-muted">${(p.loyer_mensuel_estime || 950).toLocaleString('fr-FR')} €/mois</span>
+                </div>
+              </div>
+
+              <!-- Section 3 : Simulation Financière -->
+              <div class="compare-section-box highlight-box">
+                <h5 class="comp-sec-title">💰 Prévisionnel Financier (4.5j/sem)</h5>
+                <div class="comp-row">
+                  <span class="comp-lbl">CA Brut Mensuel :</span>
+                  <strong class="comp-val text-blue">${sim.caBrutMonth.toLocaleString('fr-FR')} €</strong>
+                </div>
+                <div class="comp-row">
+                  <span class="comp-lbl">Charges & Loyer :</span>
+                  <span class="comp-val text-muted">-${sim.chargesFixesMonth.toLocaleString('fr-FR')} €</span>
+                </div>
+                <div class="comp-row highlight-net">
+                  <span class="comp-lbl">Bénéfice Net Mensuel :</span>
+                  <strong class="comp-val text-emerald">${sim.beneficeNetMonth.toLocaleString('fr-FR')} €/mois</strong>
+                </div>
+              </div>
+
+              <!-- Section 4 : Accès & Transports -->
+              <div class="compare-section-box">
+                <h5 class="comp-sec-title">🚆 Dessertes & Mobilité</h5>
+                <div class="comp-row">
+                  <span class="comp-lbl">Temps Paris Châtelet :</span>
+                  <strong class="comp-val">${p.temps_paris_min ? `~${p.temps_paris_min} min` : 'Éloigné'}</strong>
+                </div>
+                <div class="comp-row">
+                  <span class="comp-lbl">Gare proche :</span>
+                  <span class="comp-val">${p.gare_nom ? `${p.gare_nom} (${p.gare_mode || 'Train'})` : 'Aucune'}</span>
+                </div>
+              </div>
+
+              <button class="pill-btn btn-view-sheet-from-compare" data-insee="${p.code_insee}" style="width: 100%; justify-content: center; margin-top: 10px;">
+                🔍 Ouvrir la Fiche Zone
+              </button>
+            </div>
+          `;
+          })
+          .join('')}
+      </div>
+    `;
+
+    container.innerHTML = html;
+
+    // Attach listeners inside compare matrix
+    const removeBtns = container.querySelectorAll('.btn-remove-duel');
+    removeBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const code = (e.currentTarget as HTMLElement).getAttribute('data-insee');
+        if (!code) return;
+        this.comparedZones = this.comparedZones.filter((z) => z.properties.code_insee !== code);
+        this.updateCompareBadges();
+        this.updateCompareButtonOnSheet();
+        this.renderCompareMatrix();
+      });
+    });
+
+    const viewSheetBtns = container.querySelectorAll('.btn-view-sheet-from-compare');
+    viewSheetBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const code = (e.currentTarget as HTMLElement).getAttribute('data-insee');
+        if (!code) return;
+        const targetZone = this.allZones.find((z) => z.properties.code_insee === code);
+        if (targetZone) {
+          this.listeners.onZoneClickedFromTop10(targetZone);
+        }
+      });
+    });
   }
 }

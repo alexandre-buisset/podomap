@@ -37,7 +37,21 @@
         </div>
         <div class="brand-text">
           <h1>Podologie<span>IDF</span></h1>
-          <span class="subtitle">Carte d'Opportunités d'Installation</span>
+          <span class="subtitle">Aide à l'Installation & Décision Stratégique</span>
+        </div>
+      </div>
+
+      <!-- Quick Platform Stats Chips -->
+      <div class="header-stats-chips">
+        <div class="header-stat-pill" title="1 285 communes et arrondissements d'Île-de-France analysés">
+          <span class="stat-dot dot-emerald"></span>
+          <span class="stat-bold">1 285</span>
+          <span class="stat-dim">communes</span>
+        </div>
+        <div class="header-stat-pill" title="3 084 pédicures-podologues répertoriés à l'Annuaire Santé RPPS">
+          <span class="stat-dot dot-sky"></span>
+          <span class="stat-bold">3 084</span>
+          <span class="stat-dim">cabinets RPPS</span>
         </div>
       </div>
 
@@ -47,7 +61,8 @@
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input type="text" id="global-zone-search" placeholder="🔍 Rechercher une commune ou un arrondissement (ex: Vincennes, 15e, Neuilly...)" autocomplete="off" />
+          <input type="text" id="global-zone-search" placeholder="Rechercher une commune (ex: Vincennes, Saint-Germain, 15e...)" autocomplete="off" />
+          <kbd class="search-kbd-chip" title="Raccourci clavier">Ctrl K</kbd>
           <button id="btn-clear-search" class="btn-clear-search hidden" title="Effacer la recherche">&times;</button>
         </div>
         <div id="search-results-dropdown" class="search-results-dropdown hidden"></div>
@@ -93,6 +108,12 @@
             <button class="mode-pill" data-criterion="pouvoir_achat" title="Revenu médian et capacité d'achat pour semelles 140€-210€">
               💎 Pouvoir d'Achat
             </button>
+            <button class="mode-pill" data-criterion="sport" title="Bassin de sportifs licenciés et clubs de sport (INJEP / Ministère des Sports)">
+              🏃‍♂️ Sportifs & Clubs
+            </button>
+            <button class="mode-pill" data-criterion="jeunes" title="Enfants et adolescents de moins de 15/20 ans et familles (INSEE)">
+              👶 Enfants & Familles
+            </button>
             <button class="mode-pill" data-criterion="seniors" title="Bassin de population âgée de 65 ans et plus">
               👥 Seniors 65+
             </button>
@@ -114,19 +135,18 @@
         <!-- Floating Map Legend -->
         <div id="map-legend" class="glass-card legend-box">
           <div class="legend-header">
-            <span id="legend-title">Score d'Opportunité</span>
+            <span id="legend-title">Score d'Opportunité Global</span>
             <span id="legend-range-label">0 à 100</span>
           </div>
-          <div id="legend-gradient-bar" class="legend-gradient-bar gradient-score_global"></div>
-          <div class="legend-labels" id="legend-labels-row">
-            <span id="legend-lbl-1">Faible</span>
-            <span id="legend-lbl-2">Modéré</span>
-            <span id="legend-lbl-3">Favorable</span>
-            <span id="legend-lbl-4">Optimal</span>
+          <div class="legend-guide-banner">
+            <span class="guide-item guide-fav">🟢 Favorable</span>
+            <span class="guide-sep">•</span>
+            <span class="guide-item guide-unfav">🔴 Saturé / Risqué</span>
           </div>
+          <div id="legend-steps-container" class="legend-steps-container"></div>
           <div class="legend-excluded">
             <span class="legend-color-chip chip-excluded"></span>
-            <span>Pop. &lt; seuil minimal (zone grisée)</span>
+            <span>Pop. &lt; seuil minimal ou filtrée (zone grisée)</span>
           </div>
           <div id="legend-transports-chip" class="legend-transports">
             <span class="legend-mode-dots">
@@ -135,7 +155,7 @@
               <span class="dot-mode dot-train" title="Train / Transilien"></span>
               <span class="dot-mode dot-tram" title="Tramway"></span>
             </span>
-            <span>Réseau ferré & stations IDFM</span>
+            <span>Réseau ferré & stations IDFM 2026</span>
           </div>
           <div id="legend-podologues-chip" class="legend-podologues hidden">
             <span class="legend-color-chip chip-podologue"></span>
@@ -179,6 +199,16 @@
             </svg>
             Fiche Zone
           </button>
+          <button id="tab-compare-btn" class="tab-btn" data-tab="compare">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+              <line x1="12" y1="3" x2="12" y2="21"></line>
+              <path d="M6 8h3"></path>
+              <path d="M15 8h3"></path>
+            </svg>
+            Duel
+            <span id="badge-compare-count" class="tab-badge">0</span>
+          </button>
         </nav>
 
         <!-- Tab 1: Paramètres / Sliders & Filtres -->
@@ -189,18 +219,44 @@
               <label class="control-title">Profil Stratégique d'Installation</label>
               <span id="active-preset-badge" class="control-value-pill preset-active-pill">💎 Semelles</span>
             </div>
-            <div id="strategy-preset-group" class="pill-group preset-pill-group">
-              <button class="pill-btn preset-btn active" data-preset="semelles">
-                💎 Semelles & Pouvoir d'Achat
-              </button>
-              <button class="pill-btn preset-btn" data-preset="equilibre">
-                ⚖️ Équilibré
-              </button>
-              <button class="pill-btn preset-btn" data-preset="medical">
-                🩺 Médical & Diabète
-              </button>
+            <div id="strategy-preset-group" class="strategy-cards-grid">
+              <div class="strategy-card preset-btn active" data-preset="semelles">
+                <div class="strat-card-header">
+                  <span class="strat-icon">💎</span>
+                  <span class="strat-badge badge-amber">Top Rentabilité</span>
+                </div>
+                <h4 class="strat-title">Semelles & Pouvoir d'Achat</h4>
+                <p class="strat-desc">Communes aisées, dépassements libres et paniers semelles 180€–210€ absorbés par les mutuelles.</p>
+              </div>
+
+              <div class="strategy-card preset-btn" data-preset="sport_jeunes">
+                <div class="strat-card-header">
+                  <span class="strat-icon">🏃‍♂️</span>
+                  <span class="strat-badge badge-orange">Sport & Familles</span>
+                </div>
+                <h4 class="strat-title">Sport & Podopédiatrie</h4>
+                <p class="strat-desc">Forte densité de licenciés (foot, tennis, athlé) et d'enfants &lt;15 ans avec renouvellement annuel.</p>
+              </div>
+
+              <div class="strategy-card preset-btn" data-preset="equilibre">
+                <div class="strat-card-header">
+                  <span class="strat-icon">⚖️</span>
+                  <span class="strat-badge badge-emerald">Recommandé</span>
+                </div>
+                <h4 class="strat-title">Équilibré & Diversifié</h4>
+                <p class="strat-desc">Compromis optimal entre faible concurrence (45%), solvabilité semelles (25%) et patientèle variée.</p>
+              </div>
+
+              <div class="strategy-card preset-btn" data-preset="medical">
+                <div class="strat-card-header">
+                  <span class="strat-icon">🩺</span>
+                  <span class="strat-badge badge-sky">Désert Conventionné</span>
+                </div>
+                <h4 class="strat-title">Médical & Diabète</h4>
+                <p class="strat-desc">Déserts podologiques stricts (55%), soins diabétiques ALD pris en charge à 100% et seniors.</p>
+              </div>
             </div>
-            <p id="preset-description" class="control-hint">
+            <p id="preset-description" class="control-hint mt-xs">
               <strong>💎 Semelles & Pouvoir d'Achat (Rentabilité) :</strong> Valorise les communes à haut revenu disponible (INSEE Filosofi) où le reste à charge des semelles (140€-210€) et dépassements d'honoraires sont absorbés par les mutuelles premium.
             </p>
           </div>
@@ -331,9 +387,9 @@
                   <span class="dot-indicator dot-purple"></span>
                   Concurrence faible (Densité inversée)
                 </span>
-                <span id="val-concurrence" class="slider-val">30 %</span>
+                <span id="val-concurrence" class="slider-val">45 %</span>
               </div>
-              <input type="range" id="slider-concurrence" min="0" max="100" step="5" value="30" class="slider-input" />
+              <input type="range" id="slider-concurrence" min="0" max="100" step="5" value="45" class="slider-input" />
             </div>
 
             <!-- Slider 3: Demande 65+ -->
@@ -343,36 +399,63 @@
                   <span class="dot-indicator dot-blue"></span>
                   Demande Seniors (65 ans +)
                 </span>
-                <span id="val-demande" class="slider-val">20 %</span>
+                <span id="val-demande" class="slider-val">15 %</span>
               </div>
-              <input type="range" id="slider-demande" min="0" max="100" step="5" value="20" class="slider-input" />
+              <input type="range" id="slider-demande" min="0" max="100" step="5" value="15" class="slider-input" />
+              <p class="slider-subtext">Volume de seniors : soins de pédicurie, gériatrie et arthrose.</p>
             </div>
 
-            <!-- Slider 4: Accès Transports -->
+            <!-- Slider 4: Demande Sport & Clubs -->
+            <div class="slider-item">
+              <div class="slider-label-row">
+                <span class="slider-name">
+                  <span class="dot-indicator dot-orange"></span>
+                  Sportifs & Clubs (INJEP)
+                </span>
+                <span id="val-sport" class="slider-val">0 %</span>
+              </div>
+              <input type="range" id="slider-sport" min="0" max="100" step="5" value="0" class="slider-input" />
+              <p class="slider-subtext">Licenciés (foot, running, tennis, rugby...) & clubs : semelles du sport et biomécanique.</p>
+            </div>
+
+            <!-- Slider 5: Demande Enfants & Familles -->
+            <div class="slider-item">
+              <div class="slider-label-row">
+                <span class="slider-name">
+                  <span class="dot-indicator dot-pink"></span>
+                  Enfants & Familles (Podopédiatrie)
+                </span>
+                <span id="val-jeunes" class="slider-val">0 %</span>
+              </div>
+              <input type="range" id="slider-jeunes" min="0" max="100" step="5" value="0" class="slider-input" />
+              <p class="slider-subtext">Enfants 0-14 ans & parents 30-44 ans : renouvellement annuel semelles de croissance.</p>
+            </div>
+
+            <!-- Slider 6: Accès Transports -->
             <div class="slider-item">
               <div class="slider-label-row">
                 <span class="slider-name">
                   <span class="dot-indicator dot-cyan"></span>
                   Accès Transports & Gares (IDFM)
                 </span>
-                <span id="val-transports" class="slider-val">10 %</span>
+                <span id="val-transports" class="slider-val">5 %</span>
               </div>
-              <input type="range" id="slider-transports" min="0" max="100" step="5" value="10" class="slider-input" />
+              <input type="range" id="slider-transports" min="0" max="100" step="5" value="5" class="slider-input" />
             </div>
 
-            <!-- Slider 5: Diabète -->
+            <!-- Slider 7: Diabète -->
             <div class="slider-item">
               <div class="slider-label-row">
                 <span class="slider-name">
                   <span class="dot-indicator dot-amber"></span>
                   Besoin Diabète ALD (Ameli)
                 </span>
-                <span id="val-diabete" class="slider-val">5 %</span>
+                <span id="val-diabete" class="slider-val">0 %</span>
               </div>
-              <input type="range" id="slider-diabete" min="0" max="100" step="5" value="5" class="slider-input" />
+              <input type="range" id="slider-diabete" min="0" max="100" step="5" value="0" class="slider-input" />
             </div>
 
-            <!-- Slider 6: Zonage ARS -->
+            <!-- Slider 8: Zonage ARS -->
             <div class="slider-item">
               <div class="slider-label-row">
                 <span class="slider-name">
@@ -530,6 +613,26 @@
 
               <div class="breakdown-item">
                 <div class="breakdown-meta">
+                  <span>🏃‍♂️ Sportifs & Clubs (INJEP)</span>
+                  <span id="bar-val-sport" class="breakdown-score">-</span>
+                </div>
+                <div class="bar-track">
+                  <div id="bar-fill-sport" class="bar-fill fill-orange" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div class="breakdown-item">
+                <div class="breakdown-meta">
+                  <span>👶 Enfants & Familles (Podopédiatrie)</span>
+                  <span id="bar-val-jeunes" class="breakdown-score">-</span>
+                </div>
+                <div class="bar-track">
+                  <div id="bar-fill-jeunes" class="bar-fill fill-pink" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div class="breakdown-item">
+                <div class="breakdown-meta">
                   <span>🚆 Dessertes Transports (IDFM)</span>
                   <span id="bar-val-transit" class="breakdown-score">-</span>
                 </div>
@@ -598,6 +701,100 @@
                 <div class="transit-row">
                   <span class="transit-row-label">📍 Gares dans 1.5 km</span>
                   <span id="m-transit-nb-gares" class="transit-text">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sports Clubs & Biomechanics Demand Card (INJEP / Ministère des Sports) -->
+            <div class="sheet-section">
+              <h4 class="section-title">🏃‍♂️ Pratique Sportive & Clubs (Ministère des Sports / INJEP)</h4>
+              <div class="sport-card">
+                <div class="sport-stat-row">
+                  <span class="sport-label">Total licenciés sportifs</span>
+                  <span id="m-sport-licencies" class="sport-strong">-</span>
+                </div>
+                <div class="sport-stat-row">
+                  <span class="sport-label">Taux de pratique sportive</span>
+                  <span id="m-sport-rate" class="sport-val-highlight">-</span>
+                </div>
+                <div class="sport-stat-row">
+                  <span class="sport-label">Clubs & associations sportives</span>
+                  <span id="m-sport-clubs" class="sport-text">-</span>
+                </div>
+                <div class="sport-stat-row">
+                  <span class="sport-label">Licenciés mineurs (&lt; 20 ans)</span>
+                  <span id="m-sport-jeunes" class="sport-text">-</span>
+                </div>
+                
+                <!-- Breakdown by podologically demanding sport -->
+                <div class="sports-breakdown-box">
+                  <span class="sports-breakdown-title">Disciplines à forte sollicitation podologique :</span>
+                  <div class="sports-grid">
+                    <div class="sport-pill-item">
+                      <span class="sport-pill-icon">⚽</span>
+                      <span class="sport-pill-name">Football</span>
+                      <span id="m-sport-foot" class="sport-pill-count">-</span>
+                    </div>
+                    <div class="sport-pill-item">
+                      <span class="sport-pill-icon">🎾</span>
+                      <span class="sport-pill-name">Tennis</span>
+                      <span id="m-sport-tennis" class="sport-pill-count">-</span>
+                    </div>
+                    <div class="sport-pill-item">
+                      <span class="sport-pill-icon">🏃‍♂️</span>
+                      <span class="sport-pill-name">Athlétisme</span>
+                      <span id="m-sport-athle" class="sport-pill-count">-</span>
+                    </div>
+                    <div class="sport-pill-item">
+                      <span class="sport-pill-icon">🏀</span>
+                      <span class="sport-pill-name">Basket</span>
+                      <span id="m-sport-basket" class="sport-pill-count">-</span>
+                    </div>
+                    <div class="sport-pill-item">
+                      <span class="sport-pill-icon">🤾‍♂️</span>
+                      <span class="sport-pill-name">Handball</span>
+                      <span id="m-sport-hand" class="sport-pill-count">-</span>
+                    </div>
+                    <div class="sport-pill-item">
+                      <span class="sport-pill-icon">🏉</span>
+                      <span class="sport-pill-name">Rugby</span>
+                      <span id="m-sport-rugby" class="sport-pill-count">-</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="m-sport-verdict" class="sport-verdict-box">
+                  -
+                </div>
+              </div>
+            </div>
+
+            <!-- Children, Youth & Family Demographics Card (Podopediatrie / INSEE) -->
+            <div class="sheet-section">
+              <h4 class="section-title">👶 Enfants & Familles Dynamiques (Podopédiatrie / INSEE)</h4>
+              <div class="youth-card">
+                <div class="youth-stat-row">
+                  <span class="youth-label">Enfants de moins de 15 ans (0-14 ans)</span>
+                  <span id="m-pop-0-14" class="youth-strong">-</span>
+                </div>
+                <div class="youth-stat-row">
+                  <span class="youth-label">Part des 0-14 ans dans la commune</span>
+                  <span id="m-part-0-14" class="youth-val-highlight">-</span>
+                </div>
+                <div class="youth-stat-row">
+                  <span class="youth-label">Jeunes de moins de 20 ans (0-19 ans)</span>
+                  <span id="m-pop-0-19" class="youth-text">-</span>
+                </div>
+                <div class="youth-stat-row">
+                  <span class="youth-label">Parents & jeunes familles (30-44 ans)</span>
+                  <span id="m-pop-30-44" class="youth-text">-</span>
+                </div>
+                <div class="youth-stat-row">
+                  <span class="youth-label">Ratio Jeunes vs Seniors</span>
+                  <span id="m-ratio-jeunes-seniors" class="youth-text">-</span>
+                </div>
+                <div id="m-youth-verdict" class="youth-verdict-box">
+                  -
                 </div>
               </div>
             </div>
@@ -675,6 +872,22 @@
                     <td id="m-podo-semelles-tarif" class="metric-val highlight">-</td>
                   </tr>
                   <tr>
+                    <td>Licenciés sportifs (INJEP)</td>
+                    <td id="m-raw-licencies-sport" class="metric-val highlight">-</td>
+                  </tr>
+                  <tr>
+                    <td>Enfants &lt; 15 ans (0-14 ans)</td>
+                    <td id="m-raw-pop-0-14" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Parents &amp; familles (30-44 ans)</td>
+                    <td id="m-raw-pop-30-44" class="metric-val">-</td>
+                  </tr>
+                  <tr>
+                    <td>Loyer commercial estimé local pro (~45 m²)</td>
+                    <td id="m-loyer-estime" class="metric-val highlight" style="font-weight: 700;">-</td>
+                  </tr>
+                  <tr>
                     <td>Zonage conventionnel</td>
                     <td id="m-zonage-status" class="metric-val">-</td>
                   </tr>
@@ -723,17 +936,126 @@
                 </div>
               </div>
             </div>
+            <!-- Interactive Financial Simulator & Business Plan Express -->
+            <div class="sheet-section" id="sheet-simulator-section">
+              <div class="simulator-header-row">
+                <h4 class="section-title">💰 Simulateur Financier & Business Plan Express</h4>
+                <span id="sim-viability-badge" class="sim-badge">🟢 Rentable</span>
+              </div>
+              <div class="simulator-card">
+                <p class="sim-description">
+                  Estimez votre chiffre d'affaires et votre <strong>bénéfice net réel</strong> (charges, loyer local pro et cotisations URSSAF / CARPIMKO déduits) selon le potentiel de cette commune.
+                </p>
+
+                <!-- Quick Pace Work Presets -->
+                <div class="sim-presets-bar">
+                  <span class="sim-presets-title">⚡ Rythme d'activité :</span>
+                  <div class="sim-presets-row">
+                    <button class="sim-preset-btn" id="btn-sim-starter" title="3.5 j/semaine, 5 patients/jour, 30% semelles">
+                      🚀 Démarrage (3.5j)
+                    </button>
+                    <button class="sim-preset-btn active" id="btn-sim-cruise" title="4.5 j/semaine, 8 patients/jour, 35% semelles">
+                      ⚡ Croisière (4.5j)
+                    </button>
+                    <button class="sim-preset-btn" id="btn-sim-full" title="5 j/semaine, 11 patients/jour, 50% semelles">
+                      🏆 Plein Régime (5j)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Simulator Controls Grid -->
+                <div class="sim-controls-grid">
+                  <div class="sim-field">
+                    <label for="sim-input-days" class="sim-label">
+                      <span>Jours travaillés / semaine :</span>
+                      <strong id="sim-val-days">4.5 j</strong>
+                    </label>
+                    <input type="range" id="sim-input-days" min="3" max="5" step="0.5" value="4.5" class="sim-slider" />
+                  </div>
+                  <div class="sim-field">
+                    <label for="sim-input-patients" class="sim-label">
+                      <span>Patients reçus / jour :</span>
+                      <strong id="sim-val-patients">8</strong>
+                    </label>
+                    <input type="range" id="sim-input-patients" min="5" max="14" step="1" value="8" class="sim-slider" />
+                  </div>
+                  <div class="sim-field">
+                    <label for="sim-input-pct-semelles" class="sim-label">
+                      <span>Part des semelles orthopédiques :</span>
+                      <strong id="sim-val-pct-semelles">35 %</strong>
+                    </label>
+                    <input type="range" id="sim-input-pct-semelles" min="10" max="70" step="5" value="35" class="sim-slider" />
+                  </div>
+                  <div class="sim-field">
+                    <label for="sim-input-rent" class="sim-label">
+                      <span>Loyer local pro estimé (~45m²) :</span>
+                      <strong id="sim-val-rent">950 €/mois</strong>
+                    </label>
+                    <input type="range" id="sim-input-rent" min="400" max="3000" step="50" value="950" class="sim-slider" />
+                  </div>
+                </div>
+
+                <!-- Financial Flow Visual Breakdown Bar -->
+                <div class="sim-flow-section">
+                  <div class="sim-flow-header">
+                    <span class="sim-flow-title">📊 Répartition du Chiffre d'Affaires</span>
+                    <span id="sim-flow-net-pct" class="sim-flow-net-tag">54% Net en poche</span>
+                  </div>
+                  <div class="sim-flow-bar" id="sim-flow-bar">
+                    <div class="sim-bar-seg seg-rent" id="sim-seg-rent" style="width: 15%;" title="Loyer Local (~45m²)"></div>
+                    <div class="sim-bar-seg seg-charges" id="sim-seg-charges" style="width: 5%;" title="Charges fixes (Copro, Doctolib, RCP...)"></div>
+                    <div class="sim-bar-seg seg-cotis" id="sim-seg-cotis" style="width: 34%;" title="Cotisations sociales URSSAF & CARPIMKO (~42%)"></div>
+                    <div class="sim-bar-seg seg-net" id="sim-seg-net" style="width: 46%;" title="Bénéfice Net disponible avant IRPP"></div>
+                  </div>
+                  <div class="sim-flow-legend">
+                    <span class="sim-leg-item"><span class="sim-leg-dot dot-slate"></span> Loyer (<span id="sim-leg-val-rent">15%</span>)</span>
+                    <span class="sim-leg-item"><span class="sim-leg-dot dot-gray"></span> Charges (<span id="sim-leg-val-charges">5%</span>)</span>
+                    <span class="sim-leg-item"><span class="sim-leg-dot dot-amber"></span> URSSAF/CARPIMKO (<span id="sim-leg-val-cotis">34%</span>)</span>
+                    <span class="sim-leg-item"><span class="sim-leg-dot dot-emerald"></span> Net (<span id="sim-leg-val-net">46%</span>)</span>
+                  </div>
+                </div>
+
+                <!-- Financial KPI Results Grid -->
+                <div class="sim-results-grid">
+                  <div class="sim-kpi-card">
+                    <span class="sim-kpi-lbl">CA Brut Mensuel</span>
+                    <strong id="sim-kpi-ca-month" class="sim-kpi-val text-blue">7 850 €</strong>
+                    <span id="sim-kpi-ca-year" class="sim-kpi-sub">~86 350 € / an</span>
+                  </div>
+                  <div class="sim-kpi-card">
+                    <span class="sim-kpi-lbl">Charges & Loyer</span>
+                    <strong id="sim-kpi-charges" class="sim-kpi-val text-muted">-1 330 €/m</strong>
+                    <span class="sim-kpi-sub">Loyer + copro/logiciel</span>
+                  </div>
+                  <div class="sim-kpi-card">
+                    <span class="sim-kpi-lbl">Cotisations Sociales</span>
+                    <strong id="sim-kpi-cotisations" class="sim-kpi-val text-amber">-2 740 €/m</strong>
+                    <span class="sim-kpi-sub">URSSAF + CARPIMKO (~42%)</span>
+                  </div>
+                  <div class="sim-kpi-card highlight-kpi">
+                    <span class="sim-kpi-lbl">Bénéfice Net Estimé</span>
+                    <strong id="sim-kpi-net-month" class="sim-kpi-val text-emerald">3 780 €</strong>
+                    <span id="sim-kpi-net-year" class="sim-kpi-sub">~41 580 € / an net</span>
+                  </div>
+                </div>
+
+                <div class="sim-footer-note">
+                  <span>💡 Base 11 mois d'activité (5 sem. congés) et panier moyen semelles local (<span id="sim-panier-inline">190 €</span>).</span>
+                </div>
+              </div>
+            </div>
+
             <!-- Data Reliability & Transparency Section -->
             <div class="sheet-section">
               <h4 class="section-title">🔍 Fiabilité & Origine des Données</h4>
               <div class="reliability-card" id="sheet-reliability-card">
                 <div class="reliability-row">
                   <span class="rel-label">Démographie & Population :</span>
-                  <span class="rel-status" id="rel-status-pop">✅ Certifié INSEE Recensement 2021</span>
+                  <span class="rel-status" id="rel-status-pop">✅ Populations de référence en vigueur au 1er janvier 2026 (Insee)</span>
                 </div>
                 <div class="reliability-row">
                   <span class="rel-label">Cabinets de podologie :</span>
-                  <span class="rel-status" id="rel-status-podo">✅ Annuaire Santé RPPS (3 084 praticiens IDF)</span>
+                  <span class="rel-status" id="rel-status-podo">✅ Annuaire Santé RPPS 2026 en temps réel (3 084 praticiens IDF)</span>
                 </div>
                 <div class="reliability-row">
                   <span class="rel-label">Revenu & Solvabilité :</span>
@@ -743,19 +1065,59 @@
                   <span class="rel-label">Dessertes transports :</span>
                   <span class="rel-status" id="rel-status-transit">✅ Référentiel Officiel IDFM 2026</span>
                 </div>
+                <div class="reliability-row">
+                  <span class="rel-label">Pratique sportive :</span>
+                  <span class="rel-status" id="rel-status-sport">✅ Ministère des Sports / INJEP 2023</span>
+                </div>
                 <div class="reliability-note" id="rel-note-box">
-                  ℹ️ Données officielles ouvertes de l'État (INSEE, RPPS, IDFM). Aucune extrapolation non déclarée.
+                  ℹ️ Données 100% officielles ouvertes de l'État : Populations de référence au 1er janvier 2026 (Insee), Annuaire Santé RPPS 2026 en temps réel (3 084 praticiens), Référentiel IDFM 2026, Insee Filosofi, Ministère des Sports / INJEP 2023. Aucune extrapolation non déclarée.
                 </div>
               </div>
             </div>
 
-            <!-- Export / Print Installation Summary Button -->
+            <!-- Export / Duel Installation Summary Buttons -->
             <div class="sheet-section mt-sm">
+              <button id="btn-toggle-compare-zone" class="pill-btn" style="width: 100%; justify-content: center; padding: 10px; font-weight: 600; font-size: 0.85rem; margin-bottom: 8px;" title="Ajouter ou retirer cette commune du duel comparatif">
+                ⚖️ Ajouter cette commune au Duel
+              </button>
               <button id="btn-print-zone" class="pill-btn active" style="width: 100%; justify-content: center; padding: 10px; font-weight: 600; font-size: 0.85rem;" title="Imprimer ou exporter la fiche d'aide à l'installation en PDF">
                 🖨️ Exporter la Fiche d'Aide à l'Installation (PDF / Imprimer)
               </button>
             </div>
           </div>
+        </section>
+
+        <!-- Tab 4: Comparateur Face-à-Face (Duel de 2 ou 3 communes) -->
+        <section id="panel-compare" class="tab-panel">
+          <div class="compare-header">
+            <div class="compare-title-row">
+              <h3 class="panel-title">⚖️ Duel de Communes</h3>
+              <button id="btn-clear-compare" class="btn-clear-comp" title="Vider les communes sélectionnées">
+                🗑️ Vider (<span id="compare-count-lbl">0</span>)
+              </button>
+            </div>
+            <p class="panel-subtitle">Confrontez jusqu'à 3 communes candidates pour arbitrer votre choix d'installation.</p>
+          </div>
+
+          <!-- Empty State -->
+          <div id="compare-empty-state" class="compare-empty-state">
+            <div class="empty-icon">⚖️</div>
+            <h4 class="empty-title">Aucune commune sélectionnée</h4>
+            <p class="empty-desc">
+              Cliquez sur le bouton <strong>« ⚖️ Duel »</strong> dans la fiche d'une zone ou dans le Top 10 pour l'ajouter au duel comparatif.
+            </p>
+            <div class="compare-suggestions">
+              <span class="sugg-lbl">Suggestions de duels fréquents :</span>
+              <div class="sugg-btns">
+                <button class="pill-btn btn-sugg-duel" data-duel="78551,95127">Saint-Germain vs Cergy</button>
+                <button class="pill-btn btn-sugg-duel" data-duel="78490,91689">Plaisir vs Wissous</button>
+                <button class="pill-btn btn-sugg-duel" data-duel="78117,91377">Buc vs Marcoussis</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comparative Matrix Container -->
+          <div id="compare-matrix-container" class="compare-matrix-container hidden"></div>
         </section>
       </aside>
     </main>
@@ -828,12 +1190,12 @@
             <tbody>
               <tr>
                 <td>Revenus & Pouvoir d'achat</td>
-                <td>Dispositif Filosofi communal 2021 (Revenus disponibles & pauvreté)</td>
+                <td>Dispositif Filosofi communal consolidé (Revenus disponibles déclarés)</td>
                 <td>INSEE (Licence Ouverte)</td>
               </tr>
               <tr>
                 <td>Praticiens podologues</td>
-                <td>RPPS - Annuaire Santé (Extraction publique 2026)</td>
+                <td>RPPS - Annuaire Santé (Extraction publique 2026 en temps réel)</td>
                 <td>Agence du Numérique en Santé (Licence Ouverte 2.0)</td>
               </tr>
               <tr>
@@ -847,8 +1209,8 @@
                 <td>DINUM / IGN (Licence ODbL / Licence Ouverte)</td>
               </tr>
               <tr>
-                <td>Démographie & seniors</td>
-                <td>Recensement de la population (IRIS & Communes 2021)</td>
+                <td>Démographie, seniors & familles</td>
+                <td>Populations de référence en vigueur au 1er janvier 2026 (Décret Insee officiel)</td>
                 <td>INSEE (Licence Ouverte)</td>
               </tr>
               <tr>
