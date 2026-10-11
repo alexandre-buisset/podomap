@@ -15,7 +15,7 @@ class App {
     weights: { ...DEFAULT_WEIGHTS },
     activePreset: 'semelles',
     displayCriterion: 'score_global',
-    minPopulation: 2500,
+    minPopulation: 0,
     selectedRadiusKm: 2,
     selectedDepartment: 'all',
     showPodologuesLayer: false,

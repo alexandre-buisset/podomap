@@ -152,7 +152,9 @@ export class UIManager {
       const val = Number(sliderMinPop.value);
       this.currentFilters.minPopulation = val;
       const label = document.getElementById('val-min-pop');
-      if (label) label.textContent = `${val.toLocaleString('fr-FR')} hab.`;
+      if (label) {
+        label.textContent = val === 0 ? 'Tous (Sans seuil)' : `${val.toLocaleString('fr-FR')} hab.`;
+      }
       this.updateSliderGauge(sliderMinPop, '#06b6d4');
       this.listeners.onFiltersChanged(this.currentFilters);
     });
@@ -273,9 +275,16 @@ export class UIManager {
       chip.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         const smartType = target.getAttribute('data-smart') || '';
+        const wasActive = target.classList.contains('active');
         smartChips.forEach((c) => c.classList.remove('active'));
-        target.classList.add('active');
-        this.applySmartFilter(smartType);
+
+        if (wasActive) {
+          this.resetSmartFilter();
+        } else {
+          target.classList.add('active');
+          this.applySmartFilter(smartType);
+        }
+        this.listeners.onFiltersChanged(this.currentFilters);
       });
     });
 
@@ -459,9 +468,13 @@ export class UIManager {
     };
 
     if (type === 'desert') {
+      // 1. Strictly filter out communes with >= 3 podologues: show ONLY medical deserts!
+      // This immediately excludes Paris (20 to 60 podologues per arrondissement) and saturated cities!
+      this.currentFilters.maxConcurrencePodos = 2; // Maximum 2 confrères à 2km (0, 1 ou 2 podologues)
+      this.currentFilters.onlyDesertPodo = false;
       this.currentFilters.weights = {
-        pouvoir_achat_semelles: 15,
-        concurrence_inv: 60,
+        pouvoir_achat_semelles: 10,
+        concurrence_inv: 65,
         demande_65plus: 25,
         transport_access: 0,
         coef_diabete: 0,
@@ -527,6 +540,26 @@ export class UIManager {
     this.updatePresetDisplay();
     this.updateSliderLabels();
     this.listeners.onFiltersChanged(this.currentFilters);
+  }
+
+  public resetSmartFilter(): void {
+    this.currentFilters.maxConcurrencePodos = -1;
+    this.currentFilters.onlyDesertPodo = false;
+    this.currentFilters.maxTransitTimeParis = 0;
+    this.currentFilters.requireTransitStation = false;
+    const toggleStation = document.getElementById('toggle-require-station') as HTMLInputElement;
+    if (toggleStation) toggleStation.checked = false;
+    this.applyPreset('semelles');
+    const setCriterionPill = (crit: MapDisplayCriterion) => {
+      this.currentFilters.displayCriterion = crit;
+      const criterionPills = document.querySelectorAll('#criterion-btn-group .mode-pill');
+      criterionPills.forEach((p) => {
+        p.classList.toggle('active', p.getAttribute('data-criterion') === crit);
+      });
+      this.updateLegendDisplay(crit);
+      this.updateRankingHeader(crit);
+    };
+    setCriterionPill('score_global');
   }
 
   public initSearch(

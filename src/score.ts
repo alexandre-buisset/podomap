@@ -147,7 +147,7 @@ export function computeOpportunityScores(
     feat.properties.densite_podo_100k_hab = pop > 0 ? Math.round((podosCommune / pop) * 100000) : 0;
 
     const reasons: string[] = [];
-    if (pop < minPopulation) {
+    if (minPopulation && minPopulation > 0 && pop < minPopulation) {
       reasons.push(`Population < ${minPopulation.toLocaleString('fr-FR')} hab.`);
     }
 
@@ -255,15 +255,6 @@ export function computeOpportunityScores(
     .map((idx) => features[idx].properties.coef_diabete || 1.0)
     .sort((a, b) => a - b);
 
-  const sortedDensity = candidateIndices
-    .map((idx) => {
-      const p = features[idx].properties as any;
-      const podos = typeof p[podoRadiusKey] === 'number' ? p[podoRadiusKey] : p.nb_podologues_rayon || 0;
-      const pop = Math.max(1, p.pop_totale || 1);
-      return (podos / pop) * 10000.0;
-    })
-    .sort((a, b) => a - b);
-
   const sortedTransit = candidateIndices
     .map((idx) => features[idx].properties.score_transport ?? 50)
     .sort((a, b) => a - b);
@@ -282,9 +273,24 @@ export function computeOpportunityScores(
     const pSport = computePercentileForValue(feat.properties.nb_licencies_sport || 0, sortedSport);
     const pJeunes = computePercentileForValue(feat.properties.pop_0_14 || 0, sortedJeunes);
     const pDiabete = computePercentileForValue(feat.properties.coef_diabete || 1.0, sortedDiabete);
-    const densityVal = (podosInRadius / Math.max(1, popCommune)) * 10000.0;
-    const pDensity = computePercentileForValue(densityVal, sortedDensity);
-    const pConcurrence = Math.round((100.0 - pDensity) * 10) / 10;
+    // Competition score: strictly based on practitioners in radius
+    // 0 podos: 100 (pure desert), 1 podo: 90, 2 podos: 80, 3-5: 60-75, 6-11: 40-55, 12-19: 20-35, 20+: 2-15
+    let pConcurrence = 100;
+    if (podosInRadius === 0) {
+      pConcurrence = 100;
+    } else if (podosInRadius === 1) {
+      pConcurrence = 90;
+    } else if (podosInRadius === 2) {
+      pConcurrence = 80;
+    } else if (podosInRadius <= 5) {
+      pConcurrence = Math.round((80 - ((podosInRadius - 2) / 3) * 20) * 10) / 10;
+    } else if (podosInRadius <= 11) {
+      pConcurrence = Math.round((60 - ((podosInRadius - 5) / 6) * 20) * 10) / 10;
+    } else if (podosInRadius <= 19) {
+      pConcurrence = Math.round((40 - ((podosInRadius - 11) / 8) * 20) * 10) / 10;
+    } else {
+      pConcurrence = Math.max(2, Math.round((20 - Math.min(18, (podosInRadius - 20) * 0.5)) * 10) / 10);
+    }
     const pTransit = computePercentileForValue(feat.properties.score_transport ?? 50, sortedTransit);
 
     const zCode = (feat.properties.zonage || '').toLowerCase().trim();
@@ -566,12 +572,12 @@ export function getColorForScore(score: number, isExcluded: boolean = false): st
  * 🔴 Rouge (< 10) : Forte saturation
  */
 export function getColorForConcurrence(percentile: number, isExcluded: boolean = false): string {
-  if (isExcluded) return '#94a3b8';
-  if (percentile >= 75) return '#10b981'; // Très faible concurrence (Émeraude / Haute opportunité)
-  if (percentile >= 50) return '#0d9488'; // Faible concurrence (Teal)
-  if (percentile >= 25) return '#0284c7'; // Concurrence modérée (Bleu)
-  if (percentile >= 10) return '#f59e0b'; // Concurrence soutenue (Ambre)
-  return '#ef4444'; // Forte saturation (Rouge)
+  if (isExcluded) return '#64748b';
+  if (percentile >= 75) return '#10b981'; // 0-2 podos : Désert / Très faible (Vert Émeraude)
+  if (percentile >= 50) return '#0284c7'; // 3-5 podos : Faible concurrence (Bleu)
+  if (percentile >= 25) return '#f59e0b'; // 6-11 podos : Concurrence modérée (Ambre)
+  if (percentile >= 10) return '#f97316'; // 12-19 podos : Concurrence soutenue (Orange)
+  return '#ef4444'; // ≥ 20 podos : Forte saturation (Rouge)
 }
 
 /**

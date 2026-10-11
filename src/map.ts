@@ -103,14 +103,14 @@ export class MapManager {
         'fill-color': [
           'case',
           ['==', ['get', 'is_excluded'], true],
-          '#94a3b8', // Excluded: neutral gray
+          '#64748b', // Excluded: neutral slate gray
           ['coalesce', ['get', 'color'], '#64748b'],
         ],
         'fill-opacity': [
           'case',
           ['==', ['get', 'is_excluded'], true],
-          0.30,
-          0.68,
+          0.35,
+          0.78, // High-contrast, vibrant, rich color saturation
         ],
       },
     });
@@ -122,8 +122,8 @@ export class MapManager {
       source: 'zones-source',
       paint: {
         'line-color': '#ffffff',
-        'line-width': 1.2,
-        'line-opacity': 0.6,
+        'line-width': 1.0,
+        'line-opacity': 0.70,
       },
     });
 
