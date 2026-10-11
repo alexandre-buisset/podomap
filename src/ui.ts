@@ -123,7 +123,6 @@ export class UIManager {
     const sliderJeunes = document.getElementById('slider-jeunes') as HTMLInputElement;
     const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
     const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
-    const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
 
     const onWeightInput = () => {
       this.currentFilters.weights = {
@@ -134,7 +133,7 @@ export class UIManager {
         demande_jeunes: Number(sliderJeunes?.value || 0),
         transport_access: Number(sliderTransports?.value || 0),
         coef_diabete: Number(sliderDiabete?.value || 0),
-        bonus_zonage: Number(sliderZonage?.value || 0),
+        bonus_zonage: 0,
       };
       this.currentFilters.activePreset = 'custom';
       this.updatePresetDisplay();
@@ -149,7 +148,6 @@ export class UIManager {
     sliderJeunes?.addEventListener('input', onWeightInput);
     sliderTransports?.addEventListener('input', onWeightInput);
     sliderDiabete?.addEventListener('input', onWeightInput);
-    sliderZonage?.addEventListener('input', onWeightInput);
 
     // 6. Reset Weights Button
     const btnReset = document.getElementById('btn-reset-weights');
@@ -446,7 +444,6 @@ export class UIManager {
     const sliderJeunes = document.getElementById('slider-jeunes') as HTMLInputElement;
     const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
     const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
-    const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
 
     const w = this.currentFilters.weights;
     if (sliderPouvoirAchat) sliderPouvoirAchat.value = String(w.pouvoir_achat_semelles);
@@ -456,7 +453,6 @@ export class UIManager {
     if (sliderJeunes) sliderJeunes.value = String(w.demande_jeunes ?? 0);
     if (sliderTransports) sliderTransports.value = String(w.transport_access);
     if (sliderDiabete) sliderDiabete.value = String(w.coef_diabete);
-    if (sliderZonage) sliderZonage.value = String(w.bonus_zonage);
 
     // Update preset pills active state
     const presetPills = document.querySelectorAll('#strategy-preset-group .preset-btn');
@@ -538,7 +534,6 @@ export class UIManager {
     const sliderJeunes = document.getElementById('slider-jeunes') as HTMLInputElement;
     const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
     const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
-    const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
 
     const w = this.currentFilters.weights;
     if (sliderPouvoirAchat) sliderPouvoirAchat.value = String(w.pouvoir_achat_semelles);
@@ -548,7 +543,6 @@ export class UIManager {
     if (sliderJeunes) sliderJeunes.value = String(w.demande_jeunes ?? 0);
     if (sliderTransports) sliderTransports.value = String(w.transport_access);
     if (sliderDiabete) sliderDiabete.value = String(w.coef_diabete);
-    if (sliderZonage) sliderZonage.value = String(w.bonus_zonage);
 
     this.updatePresetDisplay();
     this.updateSliderLabels();
@@ -733,7 +727,6 @@ export class UIManager {
     const vJn = document.getElementById('val-jeunes');
     const vT = document.getElementById('val-transports');
     const vDia = document.getElementById('val-diabete');
-    const vZ = document.getElementById('val-zonage');
 
     if (vPA) vPA.textContent = `${w.pouvoir_achat_semelles} %`;
     if (vC) vC.textContent = `${w.concurrence_inv} %`;
@@ -742,7 +735,6 @@ export class UIManager {
     if (vJn) vJn.textContent = `${w.demande_jeunes ?? 0} %`;
     if (vT) vT.textContent = `${w.transport_access} %`;
     if (vDia) vDia.textContent = `${w.coef_diabete} %`;
-    if (vZ) vZ.textContent = `${w.bonus_zonage} %`;
 
     const sliderPouvoirAchat = document.getElementById('slider-pouvoir-achat') as HTMLInputElement;
     const sliderConcurrence = document.getElementById('slider-concurrence') as HTMLInputElement;
@@ -751,7 +743,6 @@ export class UIManager {
     const sliderJeunes = document.getElementById('slider-jeunes') as HTMLInputElement;
     const sliderTransports = document.getElementById('slider-transports') as HTMLInputElement;
     const sliderDiabete = document.getElementById('slider-diabete') as HTMLInputElement;
-    const sliderZonage = document.getElementById('slider-zonage') as HTMLInputElement;
     const sliderMinPop = document.getElementById('slider-min-pop') as HTMLInputElement;
 
     // Explicitly sync input .value from filters
@@ -762,7 +753,6 @@ export class UIManager {
     if (sliderJeunes) sliderJeunes.value = String(w.demande_jeunes ?? 0);
     if (sliderTransports) sliderTransports.value = String(w.transport_access);
     if (sliderDiabete) sliderDiabete.value = String(w.coef_diabete);
-    if (sliderZonage) sliderZonage.value = String(w.bonus_zonage);
 
     this.updateSliderGauge(sliderPouvoirAchat, '#f59e0b'); // Warm Gold / Amber
     this.updateSliderGauge(sliderConcurrence, '#a855f7');  // Purple
@@ -771,7 +761,6 @@ export class UIManager {
     this.updateSliderGauge(sliderJeunes, '#ec4899');       // Vibrant Pink
     this.updateSliderGauge(sliderTransports, '#06b6d4');   // Cyan
     this.updateSliderGauge(sliderDiabete, '#f97316');      // Orange
-    this.updateSliderGauge(sliderZonage, '#10b981');       // Emerald
     this.updateSliderGauge(sliderMinPop, '#06b6d4');
   }
 
@@ -1388,7 +1377,6 @@ export class UIManager {
     const loyerMois = p.loyer_mensuel_estime || 950;
     const loyerM2 = p.loyer_m2_estime || 20;
     setVal('m-loyer-estime', `${loyerMois.toLocaleString('fr-FR')} €/mois (~${loyerM2} €/m²)`);
-    setVal('m-zonage-status', p.zonage ? p.zonage : 'Non applicable (Standard)');
 
     document.querySelectorAll('.m-radius-val').forEach((el) => {
       el.textContent = String(radius);
