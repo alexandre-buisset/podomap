@@ -37,6 +37,25 @@ export interface ZoneProperties {
   part_prestations_sociales?: number;
   panier_semelles_estime?: number;
   potentiel_semelles?: number;
+  // Youth & Family demographics (INSEE Recensement 2021)
+  pop_0_14?: number;
+  pop_0_19?: number;
+  pop_30_44?: number;
+  part_0_14?: number;
+  part_0_19?: number;
+  ratio_jeunes_seniors?: number;
+  // Sports licenses and clubs metrics (Ministère des Sports / INJEP 2023)
+  nb_licencies_sport?: number;
+  nb_clubs_sport?: number;
+  licencies_jeunes?: number;
+  licencies_football?: number;
+  licencies_tennis?: number;
+  licencies_athletisme?: number;
+  licencies_basketball?: number;
+  licencies_handball?: number;
+  licencies_rugby?: number;
+  licencies_running_sports?: number;
+  taux_licencies_sport?: number;
   // Dynamic frontend-computed properties
   score?: number;
   score_pouvoir_achat?: number;
@@ -45,6 +64,8 @@ export interface ZoneProperties {
   score_diabete?: number;
   score_zonage?: number;
   score_transit?: number;
+  score_sport?: number;
+  score_jeunes?: number;
   concurrence_niveau?: 'tres_faible' | 'faible' | 'moderee' | 'elevee' | 'saturee';
   concurrence_label?: string;
   concurrence_color?: string;
@@ -79,7 +100,32 @@ export interface ZoneProperties {
     color: string;
     status: string;
   }>;
+  loyer_m2_estime?: number;
+  loyer_mensuel_estime?: number;
   color?: string;
+}
+
+export interface FinancialSimulationParams {
+  daysPerWeek: number; // 3 to 5 (e.g. 4.5)
+  patientsPerDay: number; // 6 to 14 (e.g. 8)
+  pctSemelles: number; // 0.10 to 0.70 (e.g. 0.35)
+  tarifSemelles: number; // e.g. 190
+  tarifSoins: number; // e.g. 42
+  loyerMensuel: number; // e.g. 950
+}
+
+export interface FinancialSimulationResult {
+  consultationsMonth: number;
+  consultationsYear: number;
+  caBrutMonth: number;
+  caBrutYear: number;
+  chargesFixesMonth: number;
+  cotisationsSocialesMonth: number; // URSSAF + CARPIMKO (~42%)
+  beneficeNetMonth: number;
+  beneficeNetYear: number;
+  tauxMargeNet: number;
+  viabiliteLabel: string;
+  viabiliteColor: string;
 }
 
 export interface ZoneFeature {
@@ -114,17 +160,19 @@ export interface PodologuesGeoJSON {
   features: PodologueFeature[];
 }
 
-export type StrategyPreset = 'semelles' | 'equilibre' | 'medical' | 'custom';
+export type StrategyPreset = 'semelles' | 'sport_jeunes' | 'equilibre' | 'medical' | 'custom';
 
-export type MapDisplayCriterion = 'score_global' | 'concurrence' | 'ratio_podo_hab' | 'pouvoir_achat' | 'seniors' | 'transports';
+export type MapDisplayCriterion = 'score_global' | 'concurrence' | 'ratio_podo_hab' | 'pouvoir_achat' | 'sport' | 'jeunes' | 'seniors' | 'transports';
 
 export interface ScoreWeights {
-  pouvoir_achat_semelles: number; // default 30 (Revenu disponible & solvabilité semelles)
-  concurrence_inv: number; // default 30 (Faible concurrence podologues)
-  demande_65plus: number; // default 25 (Bassin seniors 65+)
-  transport_access: number; // default 10 (Accessibilité gares & temps Paris)
-  coef_diabete: number; // default 5 (Sur-incidence diabète ALD)
-  bonus_zonage: number; // default 0 (Aides ARS éventuelles)
+  pouvoir_achat_semelles: number; // default 35
+  concurrence_inv: number; // default 45
+  demande_65plus: number; // default 15
+  transport_access: number; // default 5
+  coef_diabete: number; // default 0
+  bonus_zonage: number; // default 0
+  demande_sport: number; // default 0 (Licenciés sportifs & clubs)
+  demande_jeunes: number; // default 0 (Enfants 0-14 & jeunes)
 }
 
 export interface FilterSettings {

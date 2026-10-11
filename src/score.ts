@@ -1,4 +1,4 @@
-import { ZoneFeature, FilterSettings, ScoreWeights, StrategyPreset } from './types';
+import { ZoneFeature, FilterSettings, ScoreWeights, StrategyPreset, FinancialSimulationParams, FinancialSimulationResult } from './types';
 
 export const STRATEGY_PRESETS: Record<Exclude<StrategyPreset, 'custom'>, ScoreWeights> = {
   semelles: {
@@ -8,14 +8,28 @@ export const STRATEGY_PRESETS: Record<Exclude<StrategyPreset, 'custom'>, ScoreWe
     transport_access: 5,
     coef_diabete: 0,
     bonus_zonage: 0,
+    demande_sport: 0,
+    demande_jeunes: 0,
   },
-  equilibre: {
+  sport_jeunes: {
     pouvoir_achat_semelles: 25,
-    concurrence_inv: 50,
-    demande_65plus: 20,
+    concurrence_inv: 40,
+    demande_65plus: 0,
     transport_access: 5,
     coef_diabete: 0,
     bonus_zonage: 0,
+    demande_sport: 15,
+    demande_jeunes: 15,
+  },
+  equilibre: {
+    pouvoir_achat_semelles: 25,
+    concurrence_inv: 45,
+    demande_65plus: 15,
+    transport_access: 5,
+    coef_diabete: 0,
+    bonus_zonage: 0,
+    demande_sport: 5,
+    demande_jeunes: 5,
   },
   medical: {
     pouvoir_achat_semelles: 0,
@@ -24,6 +38,8 @@ export const STRATEGY_PRESETS: Record<Exclude<StrategyPreset, 'custom'>, ScoreWe
     transport_access: 5,
     coef_diabete: 10,
     bonus_zonage: 0,
+    demande_sport: 0,
+    demande_jeunes: 0,
   },
 };
 
@@ -190,8 +206,10 @@ export function computeOpportunityScores(
   let wDiabete = Math.max(0, weights.coef_diabete);
   let wZonage = hasZonageData ? Math.max(0, weights.bonus_zonage) : 0;
   let wTransit = Math.max(0, weights.transport_access || 0);
+  let wSport = Math.max(0, weights.demande_sport || 0);
+  let wJeunes = Math.max(0, weights.demande_jeunes || 0);
 
-  const baseSum = wPouvoirAchat + wDemande + wConcurrence + wDiabete + wTransit;
+  const baseSum = wPouvoirAchat + wDemande + wConcurrence + wDiabete + wTransit + wSport + wJeunes;
   if (!hasZonageData && weights.bonus_zonage > 0 && baseSum > 0) {
     const bonusToDistribute = weights.bonus_zonage;
     wPouvoirAchat += (wPouvoirAchat / baseSum) * bonusToDistribute;
@@ -199,9 +217,11 @@ export function computeOpportunityScores(
     wConcurrence += (wConcurrence / baseSum) * bonusToDistribute;
     wDiabete += (wDiabete / baseSum) * bonusToDistribute;
     if (wTransit > 0) wTransit += (wTransit / baseSum) * bonusToDistribute;
+    if (wSport > 0) wSport += (wSport / baseSum) * bonusToDistribute;
+    if (wJeunes > 0) wJeunes += (wJeunes / baseSum) * bonusToDistribute;
   }
 
-  const totalEffectiveWeight = wPouvoirAchat + wDemande + wConcurrence + wDiabete + wZonage + wTransit;
+  const totalEffectiveWeight = wPouvoirAchat + wDemande + wConcurrence + wDiabete + wZonage + wTransit + wSport + wJeunes;
 
   // 3. Extract and sort benchmark vectors from the candidate pool
   const sortedIncomes = candidateIndices
@@ -210,6 +230,14 @@ export function computeOpportunityScores(
 
   const sortedPop65 = candidateIndices
     .map((idx) => features[idx].properties.pop_65plus || 0)
+    .sort((a, b) => a - b);
+
+  const sortedSport = candidateIndices
+    .map((idx) => features[idx].properties.nb_licencies_sport || 0)
+    .sort((a, b) => a - b);
+
+  const sortedJeunes = candidateIndices
+    .map((idx) => features[idx].properties.pop_0_14 || 0)
     .sort((a, b) => a - b);
 
   const sortedDiabete = candidateIndices
@@ -240,6 +268,8 @@ export function computeOpportunityScores(
 
     const pPouvoirAchat = computePercentileForValue(feat.properties.potentiel_semelles ?? 50, sortedIncomes);
     const pDemande = computePercentileForValue(feat.properties.pop_65plus || 0, sortedPop65);
+    const pSport = computePercentileForValue(feat.properties.nb_licencies_sport || 0, sortedSport);
+    const pJeunes = computePercentileForValue(feat.properties.pop_0_14 || 0, sortedJeunes);
     const pDiabete = computePercentileForValue(feat.properties.coef_diabete || 1.0, sortedDiabete);
     const densityVal = (podosInRadius / Math.max(1, popCommune)) * 10000.0;
     const pDensity = computePercentileForValue(densityVal, sortedDensity);
@@ -310,7 +340,9 @@ export function computeOpportunityScores(
           wConcurrence * pConcurrence +
           wDiabete * pDiabete +
           wZonage * pZonage +
-          wTransit * pTransit) /
+          wTransit * pTransit +
+          wSport * pSport +
+          wJeunes * pJeunes) /
         totalEffectiveWeight;
     }
 
@@ -323,31 +355,33 @@ export function computeOpportunityScores(
     feat.properties.score_diabete = pDiabete;
     feat.properties.score_zonage = pZonage;
     feat.properties.score_transit = pTransit;
+    feat.properties.score_sport = pSport;
+    feat.properties.score_jeunes = pJeunes;
 
-    // Diagnostic labels and qualitative levels
+    // Diagnostic labels and qualitative levels with dynamic radius
     if (podosInRadius === 0) {
       feat.properties.concurrence_niveau = 'tres_faible';
-      feat.properties.concurrence_label = '🛡️ Désert (0 podologue à 2km)';
+      feat.properties.concurrence_label = `🛡️ Désert (0 podologue à ${selectedRadiusKm}km)`;
       feat.properties.concurrence_color = '#10b981';
     } else if (podosInRadius <= 3) {
       feat.properties.concurrence_niveau = 'tres_faible';
-      feat.properties.concurrence_label = `🛡️ Très faible (${podosInRadius} podo. à 2km)`;
+      feat.properties.concurrence_label = `🛡️ Très faible (${podosInRadius} podo. à ${selectedRadiusKm}km)`;
       feat.properties.concurrence_color = '#10b981';
     } else if (podosInRadius <= 8) {
       feat.properties.concurrence_niveau = 'faible';
-      feat.properties.concurrence_label = `🟢 Faible (${podosInRadius} podo. à 2km)`;
+      feat.properties.concurrence_label = `🟢 Faible (${podosInRadius} podo. à ${selectedRadiusKm}km)`;
       feat.properties.concurrence_color = '#0d9488';
     } else if (podosInRadius <= 15) {
       feat.properties.concurrence_niveau = 'moderee';
-      feat.properties.concurrence_label = `🟡 Modérée (${podosInRadius} podo. à 2km)`;
+      feat.properties.concurrence_label = `🟡 Modérée (${podosInRadius} podo. à ${selectedRadiusKm}km)`;
       feat.properties.concurrence_color = '#0284c7';
     } else if (podosInRadius <= 25) {
       feat.properties.concurrence_niveau = 'elevee';
-      feat.properties.concurrence_label = `🟠 Soutenue (${podosInRadius} podo. à 2km)`;
+      feat.properties.concurrence_label = `🟠 Soutenue (${podosInRadius} podo. à ${selectedRadiusKm}km)`;
       feat.properties.concurrence_color = '#f59e0b';
     } else {
       feat.properties.concurrence_niveau = 'saturee';
-      feat.properties.concurrence_label = `🔴 Saturée (${podosInRadius} podo. à 2km)`;
+      feat.properties.concurrence_label = `🔴 Saturée (${podosInRadius} podo. à ${selectedRadiusKm}km)`;
       feat.properties.concurrence_color = '#ef4444';
     }
 
@@ -362,6 +396,11 @@ export function computeOpportunityScores(
       feat.properties.pouvoir_achat_label = '⚠️ Modeste (Soins Sécu 27 €)';
     }
 
+    // Estimated commercial rent for practice (local professionnel PMR ~45 m2)
+    const rentInfo = getEstimatedRent(feat.properties.departement, feat.properties.code_insee, feat.properties.revenu_median);
+    feat.properties.loyer_m2_estime = rentInfo.loyerM2;
+    feat.properties.loyer_mensuel_estime = rentInfo.loyerMensuel45m2;
+
     // Ensure data reliability fields
     if (feat.properties.has_insee_income === false) {
       feat.properties.fiabilite_revenu = "Non diffusé par l'INSEE (secret statistique < 150 hab)";
@@ -370,7 +409,7 @@ export function computeOpportunityScores(
     } else {
       feat.properties.has_insee_income = true;
       feat.properties.fiabilite_revenu = "Certifié INSEE Filosofi (Officiel)";
-      feat.properties.revenu_source = "INSEE Filosofi 2021 communal";
+      feat.properties.revenu_source = "INSEE Filosofi communal";
       feat.properties.qualite_donnees = "Certifiée (INSEE + RPPS + IDFM)";
     }
 
@@ -389,6 +428,12 @@ export function computeOpportunityScores(
       // Assign map choropleth color based on selected display criterion
       const criterion = filters.displayCriterion || 'score_global';
       switch (criterion) {
+        case 'sport':
+          feat.properties.color = getColorForSport(pSport, false);
+          break;
+        case 'jeunes':
+          feat.properties.color = getColorForJeunes(pJeunes, false);
+          break;
         case 'concurrence':
           feat.properties.color = getColorForConcurrence(pConcurrence, false);
           break;
@@ -455,6 +500,10 @@ export function getTop10Zones(
 
   matching.sort((a, b) => {
     switch (displayCriterion) {
+      case 'sport':
+        return (b.properties.nb_licencies_sport || 0) - (a.properties.nb_licencies_sport || 0);
+      case 'jeunes':
+        return (b.properties.pop_0_14 || 0) - (a.properties.pop_0_14 || 0);
       case 'concurrence':
         return (b.properties.score_concurrence || 0) - (a.properties.score_concurrence || 0);
       case 'ratio_podo_hab':
@@ -476,20 +525,29 @@ export function getTop10Zones(
 
 /**
  * Global Score color scale (0 to 100).
+ * 🟢 Vert Émeraude (≥ 70) : Installation très recommandée / Forte pénurie
+ * 🟢 Teal (55 - 69) : Favorable
+ * 🔵 Bleu (40 - 54) : Équilibré
+ * 🟡 Ambre (25 - 39) : Modéré / Vigilance concurrence
+ * 🔴 Rouge (< 25) : Saturé / Fortement déconseillé
+ * ⚪ Gris Neutre : Exclu par les filtres
  */
 export function getColorForScore(score: number, isExcluded: boolean = false): string {
   if (isExcluded) return '#94a3b8';
-  if (score < 25) return '#ef4444'; // Rouge (Zone saturée ou défavorable)
-  if (score < 45) return '#64748b'; // Ardoise (Concurrence soutenue / Risqué)
-  if (score < 60) return '#0284c7'; // Bleu (Intermédiaire)
-  if (score < 75) return '#0d9488'; // Teal (Favorable)
-  return '#10b981'; // Émeraude (Excellente opportunité d'installation)
+  if (score >= 70) return '#10b981'; // Vert Émeraude (Optimal / Pénurie)
+  if (score >= 55) return '#0d9488'; // Teal (Favorable)
+  if (score >= 40) return '#0284c7'; // Bleu (Équilibré)
+  if (score >= 25) return '#f59e0b'; // Ambre (Modéré / Vigilance)
+  return '#ef4444'; // Rouge (Saturé / Fortement déconseillé)
 }
 
 /**
  * Concurrence (Pression concurrentielle) color scale:
- * 100 = very few or 0 podologues per capita (High Opportunity Emerald)
- * 0 = oversaturated zone (Red)
+ * 🟢 Vert Émeraude (≥ 75) : Très faible concurrence / Désert (Opportunité max)
+ * 🟢 Teal (50 - 74) : Faible concurrence
+ * 🔵 Bleu (25 - 49) : Concurrence modérée
+ * 🟡 Ambre (10 - 24) : Concurrence soutenue
+ * 🔴 Rouge (< 10) : Forte saturation
  */
 export function getColorForConcurrence(percentile: number, isExcluded: boolean = false): string {
   if (isExcluded) return '#94a3b8';
@@ -502,11 +560,11 @@ export function getColorForConcurrence(percentile: number, isExcluded: boolean =
 
 /**
  * Podologues / Habitant color scale:
- * Émeraude = 0 podo (Désert local absolu) ou >= 3 500 hab/podo (< 2.8 / 10k hab)
- * Teal = 2 500 à 3 500 hab/podo (Favorable / Seuil de rentabilité Ordre)
- * Bleu = 1 800 à 2 500 hab/podo (Modéré)
- * Ambre = 1 200 à 1 800 hab/podo (Concurrence soutenue)
- * Rouge = < 1 200 hab/podo ou >= 20 podologues à 2 km (Saturé)
+ * 🟢 Émeraude : 0 podo (Désert local absolu) ou ≥ 3 500 hab/podo
+ * 🟢 Teal : 2 500 à 3 500 hab/podo (Favorable / Seuil rentabilité Ordre ONPP)
+ * 🔵 Bleu : 1 800 à 2 500 hab/podo (Équilibré)
+ * 🟡 Ambre : 1 200 à 1 800 hab/podo (Concurrence soutenue)
+ * 🔴 Rouge : < 1 200 hab/podo ou ≥ 20 podologues à 2 km (Saturé)
  */
 export function getColorForRatioPodoHab(
   podosCommune: number,
@@ -517,46 +575,310 @@ export function getColorForRatioPodoHab(
   if (isExcluded) return '#94a3b8';
   if (podosInRadius >= 20) return '#ef4444'; // Saturated neighborhood overrides
   if (podosCommune === 0) return '#10b981'; // Désert communal absolu
-  if (ratioHabPodo >= 3500) return '#10b981'; // Très favorable
-  if (ratioHabPodo >= 2500) return '#0d9488'; // Favorable (Seuil Ordre)
-  if (ratioHabPodo >= 1800) return '#0284c7'; // Modéré
+  if (ratioHabPodo >= 3500) return '#10b981'; // Très favorable (Pénurie)
+  if (ratioHabPodo >= 2500) return '#0d9488'; // Favorable (Seuil Ordre ONPP)
+  if (ratioHabPodo >= 1800) return '#0284c7'; // Équilibré
   if (ratioHabPodo >= 1200) return '#f59e0b'; // Concurrence soutenue
   return '#ef4444'; // Saturé
 }
 
 /**
  * Purchasing Power color scale:
- * 100 = Highest disposable income (Warm Gold / Amber)
- * 0 = Modest income (Slate)
+ * 🟢 Émeraude (≥ 75) : Très aisé (> 30 000 €/an – Semelles 190€-210€ sans reste à charge)
+ * 🟢 Teal (50 - 74) : Aisé (26 000 – 30 000 €)
+ * 🔵 Bleu (25 - 49) : Moyen (22 000 – 26 000 €)
+ * 🟡 Ambre (10 - 24) : Modeste (18 000 – 22 000 €)
+ * 🔴 Rouge (< 10) : Faible (< 18 000 € – Soins Sécu conventionnés 27€)
  */
 export function getColorForPouvoirAchat(percentile: number, isExcluded: boolean = false): string {
   if (isExcluded) return '#94a3b8';
-  if (percentile >= 75) return '#f59e0b'; // Très aisé (Or chaud)
-  if (percentile >= 50) return '#10b981'; // Aisé (Émeraude)
+  if (percentile >= 75) return '#10b981'; // Très aisé (Émeraude)
+  if (percentile >= 50) return '#0d9488'; // Aisé (Teal)
   if (percentile >= 25) return '#0284c7'; // Moyen (Bleu)
-  return '#64748b'; // Modeste (Acier)
+  if (percentile >= 10) return '#f59e0b'; // Modeste (Ambre)
+  return '#ef4444'; // Faible (Rouge)
 }
 
 /**
  * Seniors Population color scale:
- * 100 = Major senior population pool (Indigo)
+ * 🟢 Émeraude (≥ 75) : Bassin majeur (> 5 000 seniors)
+ * 🟢 Teal (50 - 74) : Fort bassin (2 500 – 5 000 seniors)
+ * 🔵 Bleu (25 - 49) : Moyen (1 500 – 2 500 seniors)
+ * 🟡 Ambre (10 - 24) : Modéré (800 – 1 500 seniors)
+ * 🔴 Rouge (< 10) : Faible (< 800 seniors)
  */
 export function getColorForSeniors(percentile: number, isExcluded: boolean = false): string {
   if (isExcluded) return '#94a3b8';
-  if (percentile >= 75) return '#6366f1'; // Bassin majeur (Indigo)
-  if (percentile >= 50) return '#0ea5e9'; // Fort (Bleu ciel)
-  if (percentile >= 25) return '#14b8a6'; // Moyen (Teal)
-  return '#64748b';
+  if (percentile >= 75) return '#10b981'; // Bassin majeur (Émeraude)
+  if (percentile >= 50) return '#0d9488'; // Fort (Teal)
+  if (percentile >= 25) return '#0284c7'; // Moyen (Bleu)
+  if (percentile >= 10) return '#f59e0b'; // Modéré (Ambre)
+  return '#ef4444'; // Faible (Rouge)
 }
 
 /**
  * Public Transit accessibility scale:
- * 100 = Fast access to Paris (< 25 min) and stations nearby (Cyan)
+ * 🟢 Émeraude (≥ 75) : Très rapide (< 25 min Châtelet / Gare proche)
+ * 🟢 Teal (50 - 74) : Bonne desserte (25 - 40 min)
+ * 🔵 Bleu (25 - 49) : Moyen (40 - 55 min)
+ * 🟡 Ambre (10 - 24) : Éloigné (55 - 70 min)
+ * 🔴 Rouge (< 10) : Isolé (> 70 min / sans gare)
  */
 export function getColorForTransports(percentile: number, isExcluded: boolean = false): string {
   if (isExcluded) return '#94a3b8';
-  if (percentile >= 75) return '#06b6d4'; // Rapide (Cyan vif)
-  if (percentile >= 50) return '#10b981'; // Bonne desserte (Émeraude)
-  if (percentile >= 25) return '#0284c7'; // Moyen
-  return '#64748b';
+  if (percentile >= 75) return '#10b981'; // Rapide (Émeraude)
+  if (percentile >= 50) return '#0d9488'; // Bonne desserte (Teal)
+  if (percentile >= 25) return '#0284c7'; // Moyen (Bleu)
+  if (percentile >= 10) return '#f59e0b'; // Éloigné (Ambre)
+  return '#ef4444'; // Isolé (Rouge)
+}
+
+/**
+ * Sports licenses & clubs scale:
+ * 🟢 Émeraude (≥ 75) : Grand pôle sportif (> 3 500 licenciés)
+ * 🟢 Teal (50 - 74) : Fort pôle (1 800 – 3 500 licenciés)
+ * 🔵 Bleu (25 - 49) : Moyen (900 – 1 800 licenciés)
+ * 🟡 Ambre (10 - 24) : Modéré (400 – 900 licenciés)
+ * 🔴 Rouge (< 10) : Faible (< 400 licenciés)
+ */
+export function getColorForSport(percentile: number, isExcluded: boolean = false): string {
+  if (isExcluded) return '#94a3b8';
+  if (percentile >= 75) return '#10b981'; // Fort pôle sportif (Émeraude)
+  if (percentile >= 50) return '#0d9488'; // Bonne pratique (Teal)
+  if (percentile >= 25) return '#0284c7'; // Moyen (Bleu)
+  if (percentile >= 10) return '#f59e0b'; // Modéré (Ambre)
+  return '#ef4444'; // Faible (Rouge)
+}
+
+/**
+ * Children & Youth (Podopediatrie) scale:
+ * 🟢 Émeraude (≥ 75) : Fort pôle familles & enfants (> 5 000)
+ * 🟢 Teal (50 - 74) : Favorable (2 500 – 5 000)
+ * 🔵 Bleu (25 - 49) : Moyen (1 200 – 2 500)
+ * 🟡 Ambre (10 - 24) : Modéré (600 – 1 200)
+ * 🔴 Rouge (< 10) : Faible (< 600)
+ */
+export function getColorForJeunes(percentile: number, isExcluded: boolean = false): string {
+  if (isExcluded) return '#94a3b8';
+  if (percentile >= 75) return '#10b981'; // Très jeune / Fort potentiel enfants (Émeraude)
+  if (percentile >= 50) return '#0d9488'; // Favorable (Teal)
+  if (percentile >= 25) return '#0284c7'; // Moyen (Bleu)
+  if (percentile >= 10) return '#f59e0b'; // Modéré (Ambre)
+  return '#ef4444'; // Faible (Rouge)
+}
+
+export interface LegendStepInfo {
+  color: string;
+  label: string;
+  range: string;
+}
+
+/**
+ * Unified 5-step discrete legend descriptions across all display criteria.
+ */
+export function getLegendSteps(criterion: string): { title: string; subtitle: string; steps: LegendStepInfo[] } {
+  switch (criterion) {
+    case 'ratio_podo_hab':
+      return {
+        title: '👥 Ratio Podologues / Habitant',
+        subtitle: 'Seuil d’équilibre : 1 podo pour 2 500 à 3 500 hab. (ONPP)',
+        steps: [
+          { color: '#ef4444', label: 'Saturé', range: '< 1 200 hab / ≥20 à 2km' },
+          { color: '#f59e0b', label: 'Soutenu', range: '1 200 – 1 799 hab.' },
+          { color: '#0284c7', label: 'Équilibré', range: '1 800 – 2 499 hab.' },
+          { color: '#0d9488', label: 'Favorable', range: '2 500 – 3 499 hab.' },
+          { color: '#10b981', label: 'Désert / Pénurie', range: '≥ 3 500 hab / 0 podo' },
+        ],
+      };
+    case 'concurrence':
+      return {
+        title: '🛡️ Pression Concurrentielle (Rayon 2 km)',
+        subtitle: 'Nombre de praticiens installés dans la zone de chalandise',
+        steps: [
+          { color: '#ef4444', label: 'Forte saturation', range: '≥ 20 confrères' },
+          { color: '#f59e0b', label: 'Soutenu', range: '12 – 19 confrères' },
+          { color: '#0284c7', label: 'Modéré', range: '6 – 11 confrères' },
+          { color: '#0d9488', label: 'Faible', range: '3 – 5 confrères' },
+          { color: '#10b981', label: 'Désert / 0-2 podo', range: 'Haute opportunité' },
+        ],
+      };
+    case 'pouvoir_achat':
+      return {
+        title: "💎 Pouvoir d'Achat & Solvabilité",
+        subtitle: 'Revenu disponible médian annuel (INSEE Filosofi)',
+        steps: [
+          { color: '#ef4444', label: 'Faible (Sécu 27€)', range: '< 18 k€/an' },
+          { color: '#f59e0b', label: 'Modeste', range: '18 – 22 k€/an' },
+          { color: '#0284c7', label: 'Moyen (~160€)', range: '22 – 26 k€/an' },
+          { color: '#0d9488', label: 'Aisé (~190€)', range: '26 – 30 k€/an' },
+          { color: '#10b981', label: 'Très aisé (~210€)', range: '> 30 k€/an' },
+        ],
+      };
+    case 'sport':
+      return {
+        title: '🏃‍♂️ Pratique Sportive & Clubs (INJEP)',
+        subtitle: 'Bassin de sportifs licenciés toutes fédérations confondues',
+        steps: [
+          { color: '#ef4444', label: 'Faible', range: '< 400 licenciés' },
+          { color: '#f59e0b', label: 'Modéré', range: '400 – 900 lic.' },
+          { color: '#0284c7', label: 'Moyen', range: '900 – 1 800 lic.' },
+          { color: '#0d9488', label: 'Fort', range: '1 800 – 3 500 lic.' },
+          { color: '#10b981', label: 'Grand pôle', range: '> 3 500 licenciés' },
+        ],
+      };
+    case 'jeunes':
+      return {
+        title: '👶 Enfants & Familles (Podopédiatrie)',
+        subtitle: 'Bassin de patients de moins de 15 ans (INSEE)',
+        steps: [
+          { color: '#ef4444', label: 'Faible', range: '< 600 enfants' },
+          { color: '#f59e0b', label: 'Modéré', range: '600 – 1 200' },
+          { color: '#0284c7', label: 'Moyen', range: '1 200 – 2 500' },
+          { color: '#0d9488', label: 'Fort', range: '2 500 – 5 000' },
+          { color: '#10b981', label: 'Pôle familles', range: '> 5 000 enfants' },
+        ],
+      };
+    case 'seniors':
+      return {
+        title: '👥 Bassin Seniors (65+ ans)',
+        subtitle: 'Volume de résidents âgés pour soins et pédicurie',
+        steps: [
+          { color: '#ef4444', label: 'Faible', range: '< 800 seniors' },
+          { color: '#f59e0b', label: 'Modéré', range: '800 – 1 500' },
+          { color: '#0284c7', label: 'Moyen', range: '1 500 – 2 500' },
+          { color: '#0d9488', label: 'Fort', range: '2 500 – 5 000' },
+          { color: '#10b981', label: 'Bassin majeur', range: '> 5 000 seniors' },
+        ],
+      };
+    case 'transports':
+      return {
+        title: '🚆 Accès Paris & Réseau IDFM',
+        subtitle: 'Temps de transport vers Paris Châtelet et proximité de gares',
+        steps: [
+          { color: '#ef4444', label: 'Isolé', range: '> 70 min / sans gare' },
+          { color: '#f59e0b', label: 'Éloigné', range: '55 – 70 min' },
+          { color: '#0284c7', label: 'Intermédiaire', range: '40 – 55 min' },
+          { color: '#0d9488', label: 'Bonne desserte', range: '25 – 40 min' },
+          { color: '#10b981', label: 'Rapide Paris', range: '< 25 min' },
+        ],
+      };
+    case 'score_global':
+    default:
+      return {
+        title: "Score d'Opportunité Global",
+        subtitle: 'Score multicritère pondéré de 0 à 100',
+        steps: [
+          { color: '#ef4444', label: 'Saturé / Risqué', range: '< 25' },
+          { color: '#f59e0b', label: 'Modéré / Vigilance', range: '25 – 39' },
+          { color: '#0284c7', label: 'Équilibré', range: '40 – 54' },
+          { color: '#0d9488', label: 'Favorable', range: '55 – 69' },
+          { color: '#10b981', label: 'Optimal / Pénurie', range: '≥ 70' },
+        ],
+      };
+  }
+}
+
+/**
+ * Estimate commercial practice rent (€/m2 and monthly rent for a 45 m2 cabinet)
+ * based on official IDF territorial market benchmarks (DVF / Notaires / Observatoire des Loyers).
+ */
+export function getEstimatedRent(
+  departement: string,
+  _codeInsee: string,
+  revenuMedian?: number
+): { loyerM2: number; loyerMensuel45m2: number } {
+  const rev = revenuMedian || 25000;
+  let loyerM2 = 20;
+
+  switch (departement) {
+    case '75': // Paris
+      loyerM2 = rev >= 34000 ? 48 : 42;
+      break;
+    case '92': // Hauts-de-Seine
+      loyerM2 = rev >= 34000 ? 36 : rev >= 28000 ? 30 : 25;
+      break;
+    case '94': // Val-de-Marne
+      loyerM2 = rev >= 30000 ? 27 : rev >= 24000 ? 22 : 19;
+      break;
+    case '93': // Seine-Saint-Denis
+      loyerM2 = rev >= 24000 ? 22 : 18;
+      break;
+    case '78': // Yvelines
+      loyerM2 = rev >= 33000 ? 26 : rev >= 26000 ? 21 : 16;
+      break;
+    case '91': // Essonne
+      loyerM2 = rev >= 28000 ? 20 : 16;
+      break;
+    case '77': // Seine-et-Marne
+      loyerM2 = rev >= 28000 ? 19 : 15;
+      break;
+    case '95': // Val-d'Oise
+      loyerM2 = rev >= 28000 ? 20 : 16;
+      break;
+    default:
+      loyerM2 = 20;
+      break;
+  }
+
+  const loyerMensuel45m2 = Math.round(loyerM2 * 45);
+  return { loyerM2, loyerMensuel45m2 };
+}
+
+/**
+ * Interactive financial simulator: computes monthly and annual turnover,
+ * overhead & rent, mandatory TNS social contributions (URSSAF / CARPIMKO ~42%),
+ * and estimated net income before personal income tax.
+ */
+export function simulateCabinetFinancials(params: FinancialSimulationParams): FinancialSimulationResult {
+  const weeksPerMonth = 4.33;
+  const workingDaysMonth = params.daysPerWeek * weeksPerMonth;
+  const consultationsMonth = Math.round(workingDaysMonth * params.patientsPerDay);
+  const consultationsYear = Math.round(consultationsMonth * 11); // 11 mois d'activité (5 semaines de congés)
+
+  const nbSemellesMonth = consultationsMonth * params.pctSemelles;
+  const nbSoinsMonth = consultationsMonth * (1 - params.pctSemelles);
+
+  const caBrutMonth = Math.round((nbSemellesMonth * params.tarifSemelles) + (nbSoinsMonth * params.tarifSoins));
+  const caBrutYear = Math.round(caBrutMonth * 11);
+
+  // Charges fixes d'exploitation = Loyer du local + 380 € (charges copro, eau/élec, logiciel Doctolib/Vega, assurance RCP)
+  const chargesFixesMonth = Math.round(params.loyerMensuel + 380);
+
+  // Assiette cotisations sociales TNS (URSSAF + CARPIMKO retraite et prévoyance ~ 42% du résultat brut avant cotisations)
+  const assiette = Math.max(0, caBrutMonth - chargesFixesMonth);
+  const cotisationsSocialesMonth = Math.round(assiette * 0.42);
+
+  const beneficeNetMonth = Math.max(0, caBrutMonth - chargesFixesMonth - cotisationsSocialesMonth);
+  const beneficeNetYear = Math.round(beneficeNetMonth * 11);
+  const tauxMargeNet = caBrutMonth > 0 ? Math.round((beneficeNetMonth / caBrutMonth) * 100) : 0;
+
+  let viabiliteLabel = '🟢 Excellente rentabilité';
+  let viabiliteColor = '#10b981';
+  if (beneficeNetMonth < 2200) {
+    viabiliteLabel = '🔴 Tension financière (Loyer élevé ou volume d\'actes insuffisant)';
+    viabiliteColor = '#ef4444';
+  } else if (beneficeNetMonth < 3500) {
+    viabiliteLabel = '🟡 Rentabilité modérée (Activité à développer)';
+    viabiliteColor = '#f59e0b';
+  } else if (beneficeNetMonth >= 5200) {
+    viabiliteLabel = '🌟 Très haute rentabilité libérale';
+    viabiliteColor = '#10b981';
+  } else {
+    viabiliteLabel = '🟢 Rentabilité confortable & pérenne';
+    viabiliteColor = '#0d9488';
+  }
+
+  return {
+    consultationsMonth,
+    consultationsYear,
+    caBrutMonth,
+    caBrutYear,
+    chargesFixesMonth,
+    cotisationsSocialesMonth,
+    beneficeNetMonth,
+    beneficeNetYear,
+    tauxMargeNet,
+    viabiliteLabel,
+    viabiliteColor,
+  };
 }
