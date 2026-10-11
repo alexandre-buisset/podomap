@@ -38,7 +38,7 @@ class App {
       onFiltersChanged: (filters) => this.handleFiltersChanged(filters),
       onZoneClickedFromTop10: (zone) => this.handleZoneSelected(zone, true),
       onResetWeights: () => this.handleFiltersChanged(this.currentFilters),
-      onRecenterIDF: () => this.mapManager?.flyTo(2.3522, 48.8566, 10.2),
+      onRecenterIDF: () => this.mapManager?.fitIDFBounds(true),
     });
 
     // 2. Initialize Map Manager
@@ -106,16 +106,8 @@ class App {
     // Run initial score calculation
     this.recalculateAndRender();
 
-    // Automatically initialize detail sheet with #1 zone if none is selected yet
-    const top10 = getTop10Zones(
-      this.zonesGeoJSON.features,
-      this.currentFilters.selectedDepartment,
-      this.currentFilters.displayCriterion
-    );
-    if (top10.length > 0 && !this.selectedZone) {
-      this.selectedZone = top10[0];
-      this.uiManager?.renderZoneDetail(top10[0], false);
-    }
+    // Frame the whole Île-de-France region cleanly
+    this.mapManager.fitIDFBounds(false);
 
     // Initialize instant search autocomplete with dynamic features provider
     this.uiManager?.initSearch(

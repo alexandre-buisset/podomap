@@ -974,45 +974,64 @@ html, body {
 
 /* ==========================================================================
    Map Floating Bar (Criterion Selector)
+   Strictly positioned outside the sidebar to eliminate any visual overlap
    ========================================================================== */
 
 .map-floating-bar {
   position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 14px;
+  left: calc(var(--sidebar-width) + 36px);
+  right: auto;
+  transform: none;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 14px;
+  gap: 8px;
+  padding: 5px 12px;
   border-radius: var(--radius-full);
-  background: rgba(15, 23, 42, 0.88);
-  border: 1px solid var(--border-subtle);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-  z-index: 10;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.55);
+  z-index: 15;
   white-space: nowrap;
+  max-width: calc(100vw - var(--sidebar-width) - 60px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1), max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.map-floating-bar::-webkit-scrollbar {
+  display: none;
+}
+
+#map-container.sidebar-collapsed .map-floating-bar,
+#main-content:has(#sidebar.collapsed) .map-floating-bar {
+  left: 20px;
+  max-width: calc(100vw - 40px);
 }
 
 .mode-bar-label {
-  font-size: 0.74rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
 }
 
 .mode-pills-row {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .mode-pill {
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 600;
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-subtle);
@@ -1022,6 +1041,7 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  flex-shrink: 0;
 }
 
 .mode-pill:hover {
@@ -1039,9 +1059,10 @@ html, body {
 
 .mode-divider {
   width: 1px;
-  height: 20px;
+  height: 18px;
   background: rgba(255, 255, 255, 0.15);
   margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .mode-tools-row {
@@ -1801,17 +1822,19 @@ html, body {
 @media (max-width: 900px) {
   .map-floating-bar {
     top: 10px;
-    max-width: 95%;
+    left: 10px !important;
+    right: 10px !important;
+    max-width: calc(100vw - 20px) !important;
     overflow-x: auto;
-    padding: 5px 10px;
-    gap: 8px;
+    padding: 5px 8px;
+    gap: 6px;
   }
   .mode-bar-label {
     display: none;
   }
   .mode-pill {
-    font-size: 0.72rem;
-    padding: 4px 9px;
+    font-size: 0.7rem;
+    padding: 3px 8px;
   }
   .legend-box {
     bottom: 12px;

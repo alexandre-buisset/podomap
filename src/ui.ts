@@ -213,8 +213,10 @@ export class UIManager {
     // 13. Sidebar Toggle Button
     const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
     const sidebar = document.getElementById('sidebar');
+    const mapContainer = document.getElementById('map-container');
     btnToggleSidebar?.addEventListener('click', () => {
       sidebar?.classList.toggle('collapsed');
+      mapContainer?.classList.toggle('sidebar-collapsed');
     });
 
     // 14. Methodology Modal
@@ -661,7 +663,11 @@ export class UIManager {
     });
 
     tabPanels.forEach((panel) => {
-      panel.classList.toggle('active', panel.id === `panel-${tabName}`);
+      const isActive = panel.id === `panel-${tabName}`;
+      panel.classList.toggle('active', isActive);
+      if (isActive) {
+        panel.scrollTop = 0;
+      }
     });
   }
 

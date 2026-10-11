@@ -50,9 +50,9 @@ export class MapManager {
     this.map = new ml.Map({
       container: containerId,
       style: mapStyle as any,
-      center: [2.3522, 48.8566], // Paris
-      zoom: 10.4,
-      minZoom: 8,
+      center: [2.50, 48.68], // Centroid of all Île-de-France (1 285 communes)
+      zoom: 8.7,
+      minZoom: 7.5,
       maxZoom: 18,
     });
 
@@ -539,17 +539,55 @@ export class MapManager {
     this.currentRadiusKm = radius;
   }
 
+  public fitIDFBounds(animated: boolean = true): void {
+    const isSidebarOpen = !document.getElementById('sidebar')?.classList.contains('collapsed');
+    const leftPad = isSidebarOpen ? 470 : 30;
+    this.map.fitBounds(
+      [
+        [1.44, 48.12], // Southwest (Essonne / Seine-et-Marne / Yvelines)
+        [3.52, 49.23], // Northeast (Val-d'Oise / Seine-et-Marne)
+      ],
+      {
+        padding: { top: 60, bottom: 40, left: leftPad, right: 30 },
+        duration: animated ? 900 : 0,
+        essential: true,
+      }
+    );
+  }
+
   public filterByDepartment(dept: string): void {
     if (!this.map.getLayer('zones-fill')) return;
     if (dept === 'all') {
       this.map.setFilter('zones-fill', null);
       this.map.setFilter('zones-borders', null);
       this.map.setFilter('zones-labels', null);
+      this.fitIDFBounds(true);
     } else {
       const filter = ['==', ['get', 'departement'], dept] as any;
       this.map.setFilter('zones-fill', filter);
       this.map.setFilter('zones-borders', filter);
       this.map.setFilter('zones-labels', filter);
+
+      const deptBounds: Record<string, [[number, number], [number, number]]> = {
+        '75': [[2.24, 48.81], [2.44, 48.91]],
+        '77': [[2.40, 48.12], [3.51, 49.10]],
+        '78': [[1.46, 48.44], [2.22, 49.09]],
+        '91': [[1.91, 48.29], [2.58, 48.77]],
+        '92': [[2.14, 48.73], [2.34, 48.95]],
+        '93': [[2.29, 48.82], [2.60, 48.99]],
+        '94': [[2.30, 48.68], [2.60, 48.86]],
+        '95': [[1.61, 48.91], [2.58, 49.23]],
+      };
+
+      if (deptBounds[dept]) {
+        const isSidebarOpen = !document.getElementById('sidebar')?.classList.contains('collapsed');
+        const leftPad = isSidebarOpen ? 470 : 30;
+        this.map.fitBounds(deptBounds[dept], {
+          padding: { top: 60, bottom: 40, left: leftPad, right: 30 },
+          duration: 900,
+          essential: true,
+        });
+      }
     }
   }
 }
