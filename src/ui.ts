@@ -1,5 +1,5 @@
 import { FilterSettings, ZoneFeature, StrategyPreset, MapDisplayCriterion } from './types';
-import { STRATEGY_PRESETS, getColorForScore, getLegendSteps, simulateCabinetFinancials } from './score';
+import { STRATEGY_PRESETS, getColorForScore, getLegendSteps, simulateCabinetFinancials, computeBusinessPlan3Ans } from './score';
 
 export interface UIEventListeners {
   onFiltersChanged: (filters: FilterSettings) => void;
@@ -398,9 +398,14 @@ export class UIManager {
       });
     });
 
-    // 21. Export / Print Installation Dossier Button
+    // 21. Export / Print Installation Dossier Buttons
     const btnPrintZone = document.getElementById('btn-print-zone');
     btnPrintZone?.addEventListener('click', () => {
+      window.print();
+    });
+
+    const btnPrintDossier = document.getElementById('btn-print-dossier');
+    btnPrintDossier?.addEventListener('click', () => {
       window.print();
     });
   }
@@ -1438,6 +1443,79 @@ export class UIManager {
       }
     }
 
+    // 1. Aides Financières & ZFU
+    const aides = p.aides_financieres;
+    const elAidesBadge = document.getElementById('sheet-aides-badge');
+    const elAidesZonage = document.getElementById('aides-zonage-libelle');
+    const elAidesContrat = document.getElementById('aides-cpam-contrat');
+    const elAidesMontantCpam = document.getElementById('aides-cpam-montant');
+    const elAidesZfuStatus = document.getElementById('aides-zfu-status');
+    const elAidesZfuMontant = document.getElementById('aides-zfu-montant');
+    const elAidesTotalVal = document.getElementById('aides-total-val');
+
+    if (aides) {
+      if (elAidesBadge) {
+        elAidesBadge.textContent = aides.summaryBadge;
+        elAidesBadge.style.color = aides.summaryColor;
+        elAidesBadge.style.borderColor = `${aides.summaryColor}40`;
+        elAidesBadge.style.background = `${aides.summaryColor}15`;
+      }
+      if (elAidesZonage) elAidesZonage.textContent = aides.zonageLibelle;
+      if (elAidesContrat) elAidesContrat.textContent = aides.contratCpamNom;
+      if (elAidesMontantCpam) {
+        elAidesMontantCpam.textContent = aides.aideCpamInstallation > 0 ? `+${aides.aideCpamInstallation.toLocaleString('fr-FR')} € (CAPI CPAM)` : 'Aucune prime directe';
+      }
+      if (elAidesZfuStatus) {
+        elAidesZfuStatus.textContent = aides.eligibleZFU ? `✅ Commune en Zone Franche Urbaine (${aides.nomZFU || 'ZFU-TE'})` : 'Non éligible ZFU';
+        elAidesZfuStatus.className = aides.eligibleZFU ? 'aides-val text-emerald' : 'aides-val text-muted';
+      }
+      if (elAidesZfuMontant) {
+        elAidesZfuMontant.textContent = aides.eligibleZFU ? `~${aides.exonerationFiscale5ansEstimee.toLocaleString('fr-FR')} € d'impôts économisés` : '0 €';
+      }
+      if (elAidesTotalVal) {
+        elAidesTotalVal.textContent = aides.totalAvantagesEstimes > 0 ? `Jusqu'à ${aides.totalAvantagesEstimes.toLocaleString('fr-FR')} € d'avantages financiers` : 'Secteur conventionnel standard sans aide';
+        elAidesTotalVal.style.color = aides.totalAvantagesEstimes > 0 ? '#10b981' : '#94a3b8';
+      }
+    }
+
+    // 2. Prescripteurs (Médecins Généralistes & Kinés)
+    const presc = p.prescripteurs;
+    const elPrescNbMg = document.getElementById('presc-nb-mg');
+    const elPrescNbKines = document.getElementById('presc-nb-kines');
+    const elPrescTotal = document.getElementById('presc-total');
+    const elPrescRatioPodo = document.getElementById('presc-ratio-podo');
+    const elPrescDiag = document.getElementById('presc-diagnostic-box');
+
+    if (presc) {
+      if (elPrescNbMg) elPrescNbMg.textContent = `${presc.nbMedecinsGeneralistes}`;
+      if (elPrescNbKines) elPrescNbKines.textContent = `${presc.nbKines}`;
+      if (elPrescTotal) elPrescTotal.textContent = `${presc.totalPrescripteurs} praticiens`;
+      if (elPrescRatioPodo) elPrescRatioPodo.textContent = `${presc.ratioPrescripteursParPodo} presc./podo`;
+      if (elPrescDiag) {
+        elPrescDiag.textContent = presc.diagnosticPrescripteurs;
+        elPrescDiag.style.color = presc.diagnosticColor;
+        elPrescDiag.style.borderColor = `${presc.diagnosticColor}40`;
+        elPrescDiag.style.background = `${presc.diagnosticColor}12`;
+      }
+    }
+
+    // 3. Retraites Confrères (RPPS)
+    const ret = p.retraites;
+    const elRetNbSeniors = document.getElementById('ret-nb-seniors');
+    const elRetPartPct = document.getElementById('ret-part-pct');
+    const elRetDiag = document.getElementById('ret-diagnostic-box');
+
+    if (ret) {
+      if (elRetNbSeniors) elRetNbSeniors.textContent = `${ret.nbPodosProchesRetraite} sur ${ret.nbPodosTotal} confrères`;
+      if (elRetPartPct) elRetPartPct.textContent = `${ret.partProchesRetraitePct} % de la patientèle locale`;
+      if (elRetDiag) {
+        elRetDiag.textContent = ret.opportuniteRepriseLabel;
+        elRetDiag.style.color = ret.opportuniteColor;
+        elRetDiag.style.borderColor = `${ret.opportuniteColor}40`;
+        elRetDiag.style.background = `${ret.opportuniteColor}12`;
+      }
+    }
+
     // Initialize interactive Financial Simulator & Compare button
     const rentInput = document.getElementById('sim-input-rent') as HTMLInputElement;
     if (rentInput) {
@@ -1620,6 +1698,56 @@ export class UIManager {
     if (legCharges) legCharges.textContent = `${pctCharges}%`;
     if (legCotis) legCotis.textContent = `${pctCotis}%`;
     if (legNet) legNet.textContent = `${pctNet}%`;
+
+    // 4. Update 3-Year Business Plan & Bank Dossier Table
+    const aidesObj = zone.properties.aides_financieres || {
+      zonageLibelle: 'Standard',
+      aideCpamInstallation: 0,
+      contratCpamNom: 'Aucun',
+      eligibleZFU: false,
+      exonerationFiscale5ansEstimee: 0,
+      alerteSurdotation: false,
+      totalAvantagesEstimes: 0,
+      summaryBadge: 'Standard',
+      summaryColor: '#64748b',
+    };
+    const bp3 = computeBusinessPlan3Ans(sim, aidesObj);
+
+    const elBpAn1Ca = document.getElementById('bp-an1-ca');
+    const elBpAn1Ch = document.getElementById('bp-an1-charges');
+    const elBpAn1Cot = document.getElementById('bp-an1-cotis');
+    const elBpAn1Net = document.getElementById('bp-an1-net');
+
+    const elBpAn2Ca = document.getElementById('bp-an2-ca');
+    const elBpAn2Ch = document.getElementById('bp-an2-charges');
+    const elBpAn2Cot = document.getElementById('bp-an2-cotis');
+    const elBpAn2Net = document.getElementById('bp-an2-net');
+
+    const elBpAn3Ca = document.getElementById('bp-an3-ca');
+    const elBpAn3Ch = document.getElementById('bp-an3-charges');
+    const elBpAn3Cot = document.getElementById('bp-an3-cotis');
+    const elBpAn3Net = document.getElementById('bp-an3-net');
+
+    const elBpTotalNet = document.getElementById('bp-total-net');
+    const elBpTotalAides = document.getElementById('bp-total-aides');
+
+    if (elBpAn1Ca) elBpAn1Ca.textContent = `${bp3.annee1.caBrutAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn1Ch) elBpAn1Ch.textContent = `-${bp3.annee1.chargesAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn1Cot) elBpAn1Cot.textContent = `-${bp3.annee1.cotisationsAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn1Net) elBpAn1Net.textContent = `${bp3.annee1.beneficeNetAn.toLocaleString('fr-FR')} €/an`;
+
+    if (elBpAn2Ca) elBpAn2Ca.textContent = `${bp3.annee2.caBrutAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn2Ch) elBpAn2Ch.textContent = `-${bp3.annee2.chargesAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn2Cot) elBpAn2Cot.textContent = `-${bp3.annee2.cotisationsAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn2Net) elBpAn2Net.textContent = `${bp3.annee2.beneficeNetAn.toLocaleString('fr-FR')} €/an`;
+
+    if (elBpAn3Ca) elBpAn3Ca.textContent = `${bp3.annee3.caBrutAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn3Ch) elBpAn3Ch.textContent = `-${bp3.annee3.chargesAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn3Cot) elBpAn3Cot.textContent = `-${bp3.annee3.cotisationsAn.toLocaleString('fr-FR')} €`;
+    if (elBpAn3Net) elBpAn3Net.textContent = `${bp3.annee3.beneficeNetAn.toLocaleString('fr-FR')} €/an`;
+
+    if (elBpTotalNet) elBpTotalNet.textContent = `${bp3.totalBeneficeNet3Ans.toLocaleString('fr-FR')} € net (3 ans)`;
+    if (elBpTotalAides) elBpTotalAides.textContent = bp3.totalAidesFinancieres > 0 ? `+${bp3.totalAidesFinancieres.toLocaleString('fr-FR')} € d'aides` : '0 €';
   }
 
   public toggleZoneInComparison(zone: ZoneFeature): void {

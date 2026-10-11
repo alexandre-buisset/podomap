@@ -3091,3 +3091,578 @@ html, body {
   border-color: rgba(249, 115, 22, 0.4) !important;
 }
 
+/* ==========================================================================
+   Business Plan 3 Ans, Aides Financières, Prescripteurs & Retraites
+   ========================================================================== */
+
+/* --- 1. Business Plan Prévisionnel Bancaire 3 Ans --- */
+.bp3-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.bp3-header-row h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.btn-dossier-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(14, 165, 233, 0.2));
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-dossier-print:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(14, 165, 233, 0.35));
+  border-color: rgba(16, 185, 129, 0.7);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.bp3-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bp3-intro {
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.bp3-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bp3-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.bp3-table thead th {
+  background: rgba(30, 41, 59, 0.85);
+  color: var(--text-secondary);
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+
+.bp3-table thead th:not(:first-child) {
+  text-align: right;
+}
+
+.bp3-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.bp3-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.bp3-table td {
+  padding: 7px 10px;
+  vertical-align: middle;
+}
+
+.bp-lbl {
+  color: var(--text-secondary);
+  font-size: 0.73rem;
+}
+
+.bp-num {
+  text-align: right;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.bp-ca {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.bp-row-highlight {
+  background: rgba(16, 185, 129, 0.08);
+  border-top: 1px solid rgba(16, 185, 129, 0.3) !important;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+.bp-lbl-net {
+  color: #34d399;
+}
+
+.bp-net-highlight {
+  color: #34d399;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.bp-mensuel {
+  color: #a7f3d0;
+  font-weight: 600;
+}
+
+.bp-pill-prog {
+  display: inline-block;
+  font-size: 0.6rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-weight: 700;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
+.bp3-total-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bp3-total-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.bp-total-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bp-total-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.bp-aides-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+/* --- 2. Subventions & Aides Financières --- */
+.aides-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.aides-header-row h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.badge-aides {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  white-space: nowrap;
+}
+
+.aides-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aides-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.aides-row:last-of-type {
+  border-bottom: none;
+}
+
+.aides-lbl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.aides-lbl strong {
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.aides-sub {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+}
+
+.aides-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+}
+
+.aides-total-box {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-top: 4px;
+}
+
+.aides-total-sum {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.aides-note {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 4px 0 0 0;
+  font-style: italic;
+}
+
+/* --- 3. Radar des Prescripteurs --- */
+.presc-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.presc-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.presc-stat-cell {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+}
+
+.presc-cell-icon {
+  font-size: 1.1rem;
+}
+
+.presc-cell-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.presc-cell-lbl {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.presc-diagnostic-box {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.73rem;
+  color: #e0f2fe;
+  line-height: 1.45;
+}
+
+/* --- 4. Détecteur Départs Retraite --- */
+.retraite-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.retraite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.retraite-row:last-of-type {
+  border-bottom: none;
+}
+
+.ret-lbl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ret-lbl strong {
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.ret-sub {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+}
+
+.ret-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+.ret-diag-box {
+  background: rgba(167, 139, 250, 0.08);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.73rem;
+  color: #ede9fe;
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Print / Export Dossier Bancaire (@media print)
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.2cm;
+  }
+
+  /* Reset layout for clean paper printing */
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+    height: auto !important;
+    font-size: 11pt !important;
+  }
+
+  /* Hide app interactive UI */
+  #header,
+  #map-container,
+  #btn-toggle-sidebar,
+  #btn-recenter,
+  #btn-quick-podo,
+  #btn-print-dossier,
+  #btn-print-zone,
+  .search-wrapper,
+  .tab-buttons,
+  #tab-rankings,
+  #tab-filters,
+  #tab-podo-filter,
+  #modal-methodo,
+  #modal-duel,
+  .duel-bar,
+  .panel-footer-actions,
+  .sheet-close-btn {
+    display: none !important;
+  }
+
+  /* Expand Detail Sheet as full-page document */
+  #sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    position: static !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .sidebar-content,
+  #tab-detail,
+  .panel-detail {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .detail-sheet {
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+  }
+
+  .sheet-header {
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+
+  .sheet-title {
+    color: #0f172a !important;
+    font-size: 18pt !important;
+  }
+
+  .sheet-section {
+    page-break-inside: avoid;
+    margin-bottom: 18px;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 12px 14px !important;
+    background: #f8fafc !important;
+  }
+
+  .sheet-section h3 {
+    color: #0f172a !important;
+    font-size: 12pt !important;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+  }
+
+  /* Tables and cards printing */
+  .bp3-card, .aides-card, .presc-card, .retraite-card {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  .bp3-table {
+    border: 1px solid #cbd5e1;
+  }
+
+  .bp3-table thead th {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-bottom: 1px solid #94a3b8 !important;
+  }
+
+  .bp3-table tbody tr {
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+
+  .bp-lbl, .bp-num, .bp-ca, .bp-lbl-net, .bp-net-highlight, .bp-mensuel {
+    color: #0f172a !important;
+  }
+
+  .bp-row-highlight {
+    background: #e6fcf5 !important;
+  }
+
+  .bp3-total-bar {
+    border-top: 1px solid #cbd5e1;
+  }
+
+  .bp3-total-item {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .bp-total-value, .bp-aides-value {
+    color: #0f172a !important;
+  }
+
+  .aides-lbl strong, .aides-val, .aides-total-sum,
+  .ret-lbl strong, .ret-val {
+    color: #0f172a !important;
+  }
+
+  .aides-total-box {
+    background: #fef3c7 !important;
+    border: 1px solid #f59e0b !important;
+  }
+
+  .presc-stat-cell {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .presc-cell-val {
+    color: #0284c7 !important;
+  }
+
+  .presc-diagnostic-box {
+    background: #f0f9ff !important;
+    border: 1px solid #7dd3fc !important;
+    color: #0369a1 !important;
+  }
+
+  .ret-diag-box {
+    background: #f5f3ff !important;
+    border: 1px solid #c4b5fd !important;
+    color: #5b21b6 !important;
+  }
+}
+
+

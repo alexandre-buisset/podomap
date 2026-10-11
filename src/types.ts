@@ -102,7 +102,56 @@ export interface ZoneProperties {
   }>;
   loyer_m2_estime?: number;
   loyer_mensuel_estime?: number;
+  aides_financieres?: AidesFinancieresResult;
+  prescripteurs?: PrescripteursResult;
+  retraites?: RetraiteConfreresResult;
   color?: string;
+}
+
+export interface AidesFinancieresResult {
+  zonageLibelle: string;
+  aideCpamInstallation: number;
+  contratCpamNom: string;
+  eligibleZFU: boolean;
+  exonerationFiscale5ansEstimee: number;
+  alerteSurdotation: boolean;
+  totalAvantagesEstimes: number;
+  summaryBadge: string;
+  summaryColor: string;
+}
+
+export interface PrescripteursResult {
+  nbMedecinsGeneralistes: number;
+  nbKines: number;
+  totalPrescripteurs: number;
+  ratioPrescripteursParPodo: number;
+  diagnosticPrescripteurs: string;
+  diagnosticColor: string;
+}
+
+export interface RetraiteConfreresResult {
+  nbPodosTotal: number;
+  nbPodosProchesRetraite: number;
+  partProchesRetraitePct: number;
+  opportuniteRepriseLabel: string;
+  opportuniteColor: string;
+}
+
+export interface BusinessPlan3AnsItem {
+  activitePct: number;
+  consultationsAn: number;
+  caBrutAn: number;
+  chargesAn: number;
+  cotisationsAn: number;
+  beneficeNetAn: number;
+}
+
+export interface BusinessPlan3Ans {
+  annee1: BusinessPlan3AnsItem;
+  annee2: BusinessPlan3AnsItem;
+  annee3: BusinessPlan3AnsItem;
+  totalBeneficeNet3Ans: number;
+  totalAidesFinancieres: number;
 }
 
 export interface FinancialSimulationParams {

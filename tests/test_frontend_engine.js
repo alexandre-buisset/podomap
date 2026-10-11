@@ -19,6 +19,10 @@ const {
   STRATEGY_PRESETS,
   getEstimatedRent,
   simulateCabinetFinancials,
+  computeFinancialAides,
+  computePrescripteurs,
+  computeRetraites,
+  computeBusinessPlan3Ans,
 } = await import('../dist/src/score.js');
 
 console.log('Testing frontend score engine with strategy presets & purchasing power...');
@@ -229,4 +233,40 @@ if (simResult.beneficeNetMonth < 3500) {
   throw new Error(`Expected comfortable income for 8 patients/day, got ${simResult.beneficeNetMonth} €`);
 }
 
-console.log('\n>>> TOUS LES TESTS DES PROFILS STRATÉGIQUES, SPORT, JEUNES, LOYERS & SIMULATEUR SONT VALIDÉS [OK] <<<');
+// 10. Test Aides & Subventions (ZFU & CPAM)
+console.log('\n--- TEST DES AIDES & SUBVENTIONS (ZFU & CPAM) ---');
+const aidesAulnay = computeFinancialAides('tres_sous_dotee', '93005', 86000);
+console.log(`Aulnay (93): CPAM=${aidesAulnay.aideCpamInstallation} €, ZFU=${aidesAulnay.eligibleZFU} (Exonération=${aidesAulnay.exonerationFiscale5ansEstimee} €) | Total=${aidesAulnay.totalAvantagesEstimes} €`);
+if (!aidesAulnay.eligibleZFU || aidesAulnay.aideCpamInstallation !== 20000) {
+  throw new Error('Aulnay should have ZFU and 20k CPAM installation aid');
+}
+
+const aidesParis16 = computeFinancialAides('surdotee', '75116', 160000);
+console.log(`Paris 16e (75): Régulation sur-dotée=${aidesParis16.alerteSurdotation}, Aides=${aidesParis16.totalAvantagesEstimes} €`);
+if (!aidesParis16.alerteSurdotation || aidesParis16.totalAvantagesEstimes !== 0) {
+  throw new Error('Paris 16 should trigger over-density regulation');
+}
+
+// 11. Test Prescripteurs (Médecins & Kinés)
+console.log('\n--- TEST DU VIVIER DE PRESCRIPTEURS (MG & KINÉS) ---');
+const prescStGermain = computePrescripteurs(45000, 2, false);
+console.log(`St-Germain: ${prescStGermain.nbMedecinsGeneralistes} MG, ${prescStGermain.nbKines} kinés -> Ratio: ${prescStGermain.ratioPrescripteursParPodo} prescripteurs / podo (${prescStGermain.diagnosticPrescripteurs})`);
+if (prescStGermain.ratioPrescripteursParPodo < 10) {
+  throw new Error('Expected strong prescriber pool for 45k pop with 2 podos');
+}
+
+// 12. Test Retraites Confrères (RPPS)
+console.log('\n--- TEST DES DÉPARTS EN RETRAITE ---');
+const retStGermain = computeRetraites(10, '78551');
+console.log(`Retraites test: ${retStGermain.nbPodosProchesRetraite} départs proches sur ${retStGermain.nbPodosTotal} (${retStGermain.partProchesRetraitePct}%) - ${retStGermain.opportuniteRepriseLabel}`);
+
+// 13. Test Business Plan 3 Ans
+console.log('\n--- TEST DU BUSINESS PLAN 3 ANS ---');
+const bp3 = computeBusinessPlan3Ans(simResult, aidesAulnay);
+console.log(`BP 3 Ans: An 1=${bp3.annee1.beneficeNetAn} € (60%) | An 2=${bp3.annee2.beneficeNetAn} € (85%) | An 3=${bp3.annee3.beneficeNetAn} € (100%)`);
+console.log(`BP 3 Ans Cumulé Net = ${bp3.totalBeneficeNet3Ans} € | Total Aides = ${bp3.totalAidesFinancieres} €`);
+if (bp3.annee1.beneficeNetAn >= bp3.annee3.beneficeNetAn) {
+  throw new Error('Year 1 net profit should be ramped below Year 3');
+}
+
+console.log('\n>>> TOUS LES TESTS DES PROFILS, LOYERS, AIDES, PRESCRIPTEURS, RETRAITES & BUSINESS PLAN 3 ANS SONT VALIDÉS [OK] <<<');
