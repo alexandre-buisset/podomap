@@ -428,9 +428,17 @@ export class MapManager {
       this.popup
         .setLngLat(e.lngLat)
         .setHTML(
-          `<div style="font-family: var(--font-body); padding: 2px 4px; font-size: 0.78rem; color: #0f172a;">
-            <strong>Cabinet de pédicurie-podologie</strong><br/>
-            <span style="color: #64748b;">Dép. ${props.dept} (Point anonymisé BAN)</span>
+          `<div class="map-hover-hud map-hover-hud-compact">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span style="font-size:1.1rem; line-height:1;">🩺</span>
+              <div>
+                <strong style="color:#f8fafc; font-size:0.82rem; display:block;">Cabinet de pédicurie-podologie</strong>
+                <span style="color:#94a3b8; font-size:0.72rem;">Dép. ${props.dept} • Point géocodé BAN</span>
+              </div>
+            </div>
+            <div style="color:#64748b; font-size:0.70rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:4px; margin-top:3px;">
+              Anonymisé • Source RPPS / CNAM
+            </div>
           </div>`
         )
         .addTo(this.map);
@@ -451,10 +459,17 @@ export class MapManager {
       this.popup
         .setLngLat(e.lngLat)
         .setHTML(
-          `<div style="font-family: var(--font-body); padding: 4px 6px; font-size: 0.82rem; color: #0f172a;">
-            <strong>🚉 ${props.nom}</strong><br/>
-            <span style="font-size: 0.75rem; color: #0284c7; font-weight: 600;">${props.mode}</span><br/>
-            <span style="font-size: 0.73rem; color: #475569;">${lignes}</span>
+          `<div class="map-hover-hud map-hover-hud-compact">
+            <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:4px;">
+              <span style="font-size:1.15rem; line-height:1.2;">🚉</span>
+              <div>
+                <strong style="color:#f8fafc; font-size:0.85rem; display:block;">${props.nom}</strong>
+                <span style="display:inline-block; font-size:0.70rem; font-weight:600; padding:1px 6px; border-radius:4px; background:rgba(2,132,199,0.22); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); margin-top:2px;">${props.mode}</span>
+              </div>
+            </div>
+            <div style="color:#cbd5e1; font-size:0.73rem; line-height:1.35; margin-top:4px; border-top:1px solid rgba(255,255,255,0.08); padding-top:4px;">
+              ${lignes}
+            </div>
           </div>`
         )
         .addTo(this.map);

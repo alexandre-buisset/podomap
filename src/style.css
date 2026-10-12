@@ -219,8 +219,11 @@ html, body {
   border-bottom: none;
 }
 
-.search-result-item:hover {
-  background: rgba(56, 189, 248, 0.14);
+.search-result-item:hover,
+.search-result-item.selected {
+  background: rgba(56, 189, 248, 0.18);
+  border-left: 3px solid var(--accent-primary, #0ea5e9);
+  padding-left: 9px;
 }
 
 .search-item-info {
@@ -2689,33 +2692,6 @@ html, body {
   border-color: rgba(239, 68, 68, 0.35) !important;
 }
 
-/* Print / Export Styles for Installation Dossier */
-@media print {
-  header, #sidebar-tabs, #panel-controls, #panel-ranking, .map-floating-bar, .legend-box, #btn-toggle-sidebar {
-    display: none !important;
-  }
-  body, #main-content, #sidebar {
-    background: #ffffff !important;
-    color: #000000 !important;
-    position: static !important;
-    width: 100% !important;
-    height: auto !important;
-  }
-  #sidebar {
-    border: none !important;
-    box-shadow: none !important;
-    max-width: 100% !important;
-  }
-  .zone-sheet {
-    display: block !important;
-    color: #111827 !important;
-  }
-  .glass-card {
-    background: #ffffff !important;
-    border: 1px solid #e5e7eb !important;
-  }
-}
-
 /* ==========================================================================
    Header Stats Chips & Search Keyboard Badge
    ========================================================================== */
@@ -2906,6 +2882,12 @@ html, body {
   color: var(--text-primary);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 20px rgba(0, 0, 0, 0.3);
   animation: hudFadeIn 0.18s ease-out;
+}
+
+.map-hover-hud-compact {
+  min-width: 210px;
+  max-width: 290px;
+  padding: 8px 11px;
 }
 
 @keyframes hudFadeIn {
@@ -4209,23 +4191,22 @@ html, body {
   }
 
   /* Hide app interactive UI */
-  #header,
+  .app-header,
   #map-container,
   #btn-toggle-sidebar,
-  #btn-recenter,
-  #btn-quick-podo,
-  #btn-print-dossier,
+  #btn-mobile-open-sidebar,
+  .sidebar-mobile-bar,
+  #sidebar-backdrop,
+  .sidebar-tabs,
+  #panel-controls,
+  #panel-ranking,
+  #panel-compare,
+  #map-mode-selector,
+  .legend-box,
+  #btn-toggle-compare-zone,
   #btn-print-zone,
-  .search-wrapper,
-  .tab-buttons,
-  #tab-rankings,
-  #tab-filters,
-  #tab-podo-filter,
-  #modal-methodo,
-  #modal-duel,
-  .duel-bar,
-  .panel-footer-actions,
-  .sheet-close-btn {
+  .modal-backdrop,
+  #zone-detail-empty {
     display: none !important;
   }
 
@@ -4236,26 +4217,23 @@ html, body {
     position: static !important;
     box-shadow: none !important;
     border: none !important;
-    background: transparent !important;
+    background: #ffffff !important;
     height: auto !important;
     overflow: visible !important;
+    transform: none !important;
   }
 
-  .sidebar-content,
-  #tab-detail,
-  .panel-detail {
+  #panel-detail,
+  #zone-detail-content,
+  .zone-sheet {
     display: block !important;
     height: auto !important;
     overflow: visible !important;
     padding: 0 !important;
-  }
-
-  .detail-sheet {
     background: #ffffff !important;
     border: none !important;
     box-shadow: none !important;
     color: #0f172a !important;
-    padding: 0 !important;
   }
 
   .sheet-header {

@@ -699,45 +699,111 @@ export class UIManager {
     const btnClear = document.getElementById('btn-clear-search');
     if (!input || !dropdown) return;
 
+    let selectedIndex = -1;
+    let currentMatches: ZoneFeature[] = [];
+
     const normalize = (str: string) =>
       str
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[-_']/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
+
+    const expandAliases = (str: string) => {
+      return normalize(str)
+        .replace(/\bst\b/g, 'saint')
+        .replace(/\bste\b/g, 'sainte');
+    };
+
+    const selectMatch = (f: ZoneFeature) => {
+      input.value = f.properties.nom;
+      dropdown.classList.add('hidden');
+      dropdown.innerHTML = '';
+      selectedIndex = -1;
+      currentMatches = [];
+      onZoneSelect(f);
+    };
+
+    const updateSelectionVisual = () => {
+      const items = dropdown.querySelectorAll('.search-result-item');
+      items.forEach((it, idx) => {
+        if (idx === selectedIndex) {
+          it.classList.add('selected');
+          it.scrollIntoView({ block: 'nearest' });
+        } else {
+          it.classList.remove('selected');
+        }
+      });
+    };
 
     input.addEventListener('input', () => {
       const raw = input.value.trim();
       const q = normalize(raw);
+      const qExp = expandAliases(raw);
       if (btnClear) btnClear.classList.toggle('hidden', q.length === 0);
+
+      selectedIndex = -1;
 
       if (q.length < 2) {
         dropdown.classList.add('hidden');
         dropdown.innerHTML = '';
+        currentMatches = [];
         return;
       }
 
       const features = typeof featuresProvider === 'function' ? featuresProvider() : featuresProvider;
-      const matches = features
-        .filter((f) => {
-          const nom = normalize(f.properties.nom || '');
-          const insee = f.properties.code_insee || '';
-          const dept = f.properties.departement || '';
-          return nom.includes(q) || insee.startsWith(q) || (q.length >= 2 && dept === q);
-        })
-        .slice(0, 8);
+      const filtered = features.filter((f) => {
+        const nom = f.properties.nom || '';
+        const nomNorm = normalize(nom);
+        const nomExp = expandAliases(nom);
+        const insee = f.properties.code_insee || '';
+        const dept = f.properties.departement || '';
 
-      if (matches.length === 0) {
+        // Match by normalized name or expanded aliases
+        if (nomNorm.includes(q) || nomExp.includes(qExp)) return true;
+
+        // Match by INSEE code
+        if (insee.startsWith(q)) return true;
+
+        // Match Paris postal codes (75001-75020 -> 75101-75120)
+        if (q.startsWith('750')) {
+          const arr = q.slice(3);
+          if (!arr) return insee.startsWith('751');
+          if (insee.startsWith('751' + arr)) return true;
+        }
+
+        // Match department directly
+        if (q.length >= 2 && dept === q) return true;
+
+        return false;
+      });
+
+      // Sort matches: names starting with query first, then largest population
+      filtered.sort((a, b) => {
+        const aNom = expandAliases(a.properties.nom || '');
+        const bNom = expandAliases(b.properties.nom || '');
+        const aStarts = aNom.startsWith(qExp) ? 1 : 0;
+        const bStarts = bNom.startsWith(qExp) ? 1 : 0;
+        if (aStarts !== bStarts) return bStarts - aStarts;
+        return (Number(b.properties.pop_totale) || 0) - (Number(a.properties.pop_totale) || 0);
+      });
+
+      currentMatches = filtered.slice(0, 8);
+
+      if (currentMatches.length === 0) {
         dropdown.innerHTML = `<div class="search-no-result">Aucune commune trouvée pour "${input.value}"</div>`;
         dropdown.classList.remove('hidden');
         return;
       }
 
       dropdown.innerHTML = '';
-      matches.forEach((f) => {
+      currentMatches.forEach((f, idx) => {
         const p = f.properties as any;
         const item = document.createElement('div');
         item.className = 'search-result-item';
+        item.setAttribute('data-idx', String(idx));
         const income = p.revenu_median ? `${p.revenu_median.toLocaleString('fr-FR')} €` : '-';
         const rad = this.currentFilters.selectedRadiusKm;
         const podos = p[`nb_podologues_${rad}km`] ?? p.nb_podologues_2km ?? p.nb_podologues ?? 0;
@@ -763,9 +829,12 @@ export class UIManager {
         `;
 
         item.addEventListener('click', () => {
-          input.value = p.nom;
-          dropdown.classList.add('hidden');
-          onZoneSelect(f);
+          selectMatch(f);
+        });
+
+        item.addEventListener('mouseenter', () => {
+          selectedIndex = idx;
+          updateSelectionVisual();
         });
 
         dropdown.appendChild(item);
@@ -774,11 +843,44 @@ export class UIManager {
       dropdown.classList.remove('hidden');
     });
 
+    // Keyboard navigation: ArrowDown, ArrowUp, Enter, Escape
+    input.addEventListener('keydown', (e) => {
+      if (dropdown.classList.contains('hidden') || currentMatches.length === 0) {
+        if (e.key === 'ArrowDown' && input.value.trim().length >= 2) {
+          input.dispatchEvent(new Event('input'));
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex + 1) % currentMatches.length;
+        updateSelectionVisual();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex - 1 + currentMatches.length) % currentMatches.length;
+        updateSelectionVisual();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedIndex >= 0 && currentMatches[selectedIndex]) {
+          selectMatch(currentMatches[selectedIndex]);
+        } else if (currentMatches.length > 0) {
+          selectMatch(currentMatches[0]);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        dropdown.classList.add('hidden');
+        selectedIndex = -1;
+      }
+    });
+
     btnClear?.addEventListener('click', () => {
       input.value = '';
       btnClear.classList.add('hidden');
       dropdown.classList.add('hidden');
       dropdown.innerHTML = '';
+      currentMatches = [];
+      selectedIndex = -1;
       input.focus();
     });
 
@@ -809,10 +911,10 @@ export class UIManager {
     if (badge) badge.textContent = info.badge;
     if (desc) desc.innerHTML = info.desc;
 
-    if (this.currentFilters.activePreset === 'custom') {
-      const presetPills = document.querySelectorAll('#strategy-preset-group .preset-btn');
-      presetPills.forEach((p) => p.classList.remove('active'));
-    }
+    const presetPills = document.querySelectorAll('#strategy-preset-group .preset-btn');
+    presetPills.forEach((p) => {
+      p.classList.toggle('active', p.getAttribute('data-preset') === this.currentFilters.activePreset);
+    });
   }
 
   public switchTab(tabName: string): void {
@@ -956,6 +1058,30 @@ export class UIManager {
     this.updateSliderGauge(sliderTransports, '#06b6d4');   // Cyan
     this.updateSliderGauge(sliderDiabete, '#f97316');      // Orange
     this.updateSliderGauge(sliderMinPop, '#06b6d4');
+
+    const totalWeights =
+      w.pouvoir_achat_semelles +
+      w.concurrence_inv +
+      w.demande_65plus +
+      (w.demande_sport ?? 0) +
+      (w.demande_jeunes ?? 0) +
+      w.transport_access +
+      w.coef_diabete;
+
+    const totalBadge = document.getElementById('weights-total-badge');
+    if (totalBadge) {
+      if (totalWeights === 100) {
+        totalBadge.textContent = '100 % (Équilibré)';
+        totalBadge.style.color = '#10b981';
+        totalBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        totalBadge.style.background = 'rgba(16, 185, 129, 0.12)';
+      } else {
+        totalBadge.textContent = `${totalWeights} % (Normalisé auto)`;
+        totalBadge.style.color = '#f59e0b';
+        totalBadge.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        totalBadge.style.background = 'rgba(245, 158, 11, 0.12)';
+      }
+    }
   }
 
   public updateExcludedCount(count: number): void {
