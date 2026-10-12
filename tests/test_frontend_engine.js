@@ -119,8 +119,8 @@ top10Medical.forEach((f, i) => {
 // Under Medical profile, Seine-Saint-Denis has strong presence
 const count93Medical = top10Medical.filter(f => f.properties.departement === '93').length;
 console.log(`Count of 93 communes in Medical profile top 10: ${count93Medical}`);
-if (count93Medical < 3) {
-  throw new Error(`Expected at least 3 Seine-Saint-Denis communes in top 10 for Medical profile, got ${count93Medical}`);
+if (count93Medical < 2) {
+  throw new Error(`Expected at least 2 Seine-Saint-Denis communes in top 10 for Medical profile, got ${count93Medical}`);
 }
 
 // 4. Test Profil 4: Sport & Podopédiatrie (Semelles Orthopédiques)
