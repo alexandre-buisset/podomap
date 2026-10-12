@@ -94,42 +94,73 @@
 
         <!-- Floating Criterion Selector Bar -->
         <div id="map-mode-selector" class="glass-card map-floating-bar">
-          <span class="mode-bar-label">Afficher :</span>
-          <div class="mode-pills-row" id="criterion-btn-group">
-            <button class="mode-pill active" data-criterion="score_global" title="Score synthétique selon le profil et les pondérations">
-              🌟 Score Global
-            </button>
-            <button class="mode-pill" data-criterion="ratio_podo_hab" title="Ratio podologues / habitants : vert = désert ou forte pénurie, rouge = saturation">
-              👥 Podos / Habitant
-            </button>
-            <button class="mode-pill" data-criterion="concurrence" title="Pression concurrentielle : vert = désert/peu de confrères, rouge = saturation">
-              🛡️ Concurrence
-            </button>
-            <button class="mode-pill" data-criterion="pouvoir_achat" title="Revenu médian et capacité d'achat pour semelles 140€-210€">
-              💎 Pouvoir d'Achat
-            </button>
-            <button class="mode-pill" data-criterion="sport" title="Bassin de sportifs licenciés et clubs de sport (INJEP / Ministère des Sports)">
-              🏃‍♂️ Sportifs & Clubs
-            </button>
-            <button class="mode-pill" data-criterion="jeunes" title="Enfants et adolescents de moins de 15/20 ans et familles (INSEE)">
-              👶 Enfants & Familles
-            </button>
-            <button class="mode-pill" data-criterion="seniors" title="Bassin de population âgée de 65 ans et plus">
-              👥 Seniors 65+
-            </button>
-            <button class="mode-pill" data-criterion="transports" title="Accessibilité et temps de trajet estimé vers Paris Châtelet">
-              🚆 Transports
-            </button>
+          <div class="mode-bar-header">
+            <span class="mode-bar-label">Afficher :</span>
+            <!-- Mobile/Compact Quick Dropdown Select -->
+            <select id="select-map-criterion" class="mode-select-dropdown" title="Choisir le critère cartographique">
+              <option value="score_global">🌟 Score Global</option>
+              <option value="ratio_podo_hab">👥 Podos / Habitant</option>
+              <option value="concurrence">🛡️ Concurrence</option>
+              <option value="pouvoir_achat">💎 Pouvoir d'Achat</option>
+              <option value="sport">🏃‍♂️ Sportifs & Clubs</option>
+              <option value="jeunes">👶 Enfants & Familles</option>
+              <option value="seniors">👥 Seniors 65+</option>
+              <option value="transports">🚆 Transports</option>
+            </select>
           </div>
-          <div class="mode-divider"></div>
-          <div class="mode-tools-row">
-            <button id="btn-quick-toggle-podo" class="mode-pill pill-toggle-podo" title="Voir l'emplacement exact des 3 084 cabinets et leur zone de couverture 1km">
-              📍 Cabinets (3 084)
-            </button>
-            <button id="btn-recenter-idf" class="mode-pill pill-tool" title="Recentrer la carte sur l'ensemble de l'Île-de-France">
-              🎯 Vue IDF
-            </button>
+
+          <!-- Left scroll arrow button -->
+          <button id="btn-mode-scroll-left" class="mode-scroll-btn btn-scroll-left" title="Défiler vers la gauche" aria-label="Défiler vers la gauche">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+
+          <!-- Scrollable Viewport with Mouse Wheel & Drag Support -->
+          <div class="mode-scroll-viewport" id="mode-scroll-viewport">
+            <div class="mode-pills-row" id="criterion-btn-group">
+              <button class="mode-pill active" data-criterion="score_global" title="Score synthétique selon le profil et les pondérations">
+                🌟 Score Global
+              </button>
+              <button class="mode-pill" data-criterion="ratio_podo_hab" title="Ratio podologues / habitants : vert = désert ou forte pénurie, rouge = saturation">
+                👥 Podos / Habitant
+              </button>
+              <button class="mode-pill" data-criterion="concurrence" title="Pression concurrentielle : vert = désert/peu de confrères, rouge = saturation">
+                🛡️ Concurrence
+              </button>
+              <button class="mode-pill" data-criterion="pouvoir_achat" title="Revenu médian et capacité d'achat pour semelles 140€-210€">
+                💎 Pouvoir d'Achat
+              </button>
+              <button class="mode-pill" data-criterion="sport" title="Bassin de sportifs licenciés et clubs de sport (INJEP / Ministère des Sports)">
+                🏃‍♂️ Sportifs & Clubs
+              </button>
+              <button class="mode-pill" data-criterion="jeunes" title="Enfants et adolescents de moins de 15/20 ans et familles (INSEE)">
+                👶 Enfants & Familles
+              </button>
+              <button class="mode-pill" data-criterion="seniors" title="Bassin de population âgée de 65 ans et plus">
+                👥 Seniors 65+
+              </button>
+              <button class="mode-pill" data-criterion="transports" title="Accessibilité et temps de trajet estimé vers Paris Châtelet">
+                🚆 Transports
+              </button>
+            </div>
+            <div class="mode-divider"></div>
+            <div class="mode-tools-row">
+              <button id="btn-quick-toggle-podo" class="mode-pill pill-toggle-podo" title="Voir l'emplacement exact des 3 084 cabinets et leur zone de couverture 1km">
+                📍 Cabinets (3 084)
+              </button>
+              <button id="btn-recenter-idf" class="mode-pill pill-tool" title="Recentrer la carte sur l'ensemble de l'Île-de-France">
+                🎯 Vue IDF
+              </button>
+            </div>
           </div>
+
+          <!-- Right scroll arrow button -->
+          <button id="btn-mode-scroll-right" class="mode-scroll-btn btn-scroll-right visible" title="Défiler vers la droite" aria-label="Défiler vers la droite">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
         </div>
 
         <!-- Floating Map Legend -->
@@ -298,6 +329,25 @@
             <p id="preset-description" class="control-hint mt-xs">
               <strong>💎 Semelles & Pouvoir d'Achat (Rentabilité) :</strong> Valorise les communes à haut revenu disponible (INSEE Filosofi) où le reste à charge des semelles (140€-210€) et dépassements d'honoraires sont absorbés par les mutuelles premium.
             </p>
+          </div>
+
+          <!-- Map Layer / Criterion Display Selector inside sidebar (Synchronized) -->
+          <div class="control-group">
+            <div class="control-header">
+              <label class="control-title">🗺️ Critère Coloré sur la Carte</label>
+              <span id="active-criterion-badge" class="control-value-pill">🌟 Score Global</span>
+            </div>
+            <div id="sidebar-criterion-btn-group" class="pill-group">
+              <button class="pill-btn active" data-criterion="score_global">🌟 Score Global</button>
+              <button class="pill-btn" data-criterion="ratio_podo_hab">👥 Podos / Habitant</button>
+              <button class="pill-btn" data-criterion="concurrence">🛡️ Concurrence</button>
+              <button class="pill-btn" data-criterion="pouvoir_achat">💎 Pouvoir d'Achat</button>
+              <button class="pill-btn" data-criterion="sport">🏃‍♂️ Sportifs</button>
+              <button class="pill-btn" data-criterion="jeunes">👶 Familles</button>
+              <button class="pill-btn" data-criterion="seniors">👥 Seniors 65+</button>
+              <button class="pill-btn" data-criterion="transports">🚆 Transports</button>
+            </div>
+            <p class="control-hint">Basculez entre le score global synthétique et les critères d'opportunité ciblés.</p>
           </div>
 
           <!-- Smart Strategy Quick Chips -->

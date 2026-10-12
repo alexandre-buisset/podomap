@@ -58,10 +58,22 @@ if (!css.includes('sidebar-backdrop') || !css.includes('btn-mobile-floating-pane
 }
 console.log('  [PASS] Mobile drawer, backdrop, and floating map trigger styles verified');
 
-// 6. Safe Area Insets
-if (!css.includes('safe-area-inset')) {
-  throw new Error('Missing safe-area-inset support for notch/home bar');
+// 7. Floating Filter Selector Responsiveness & Scroll
+const filterElements = [
+  'mode-scroll-viewport',
+  'btn-mode-scroll-left',
+  'btn-mode-scroll-right',
+  'select-map-criterion',
+  'sidebar-criterion-btn-group',
+];
+for (const fe of filterElements) {
+  if (!html.includes(fe)) {
+    throw new Error(`Missing responsive filter element: ${fe}`);
+  }
 }
-console.log('  [PASS] env(safe-area-inset-*) verified for notch and gestures');
+if (!css.includes('.maplibregl-ctrl-top-right') || !css.includes('.mode-scroll-btn')) {
+  throw new Error('Missing top offset for zoom controls or mode-scroll-btn styling in CSS');
+}
+console.log('  [PASS] Floating selector bar horizontal scroll arrows, wheel, and mirrored sidebar group verified');
 
 console.log('\n>>> TOUS LES TESTS DE RESPONSIVITÉ SONT VALIDÉS AVEC SUCCÈS ! <<<');

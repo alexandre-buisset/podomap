@@ -301,19 +301,86 @@ export class UIManager {
       if (e.target === modalMethodo) modalMethodo.classList.add('hidden');
     });
 
-    // 15. Map Display Criterion Pills (Score Global, Concurrence, Pouvoir d'Achat, Seniors, Transports)
-    const criterionPills = document.querySelectorAll('#criterion-btn-group .mode-pill');
-    criterionPills.forEach((pill) => {
+    // 15. Map Display Criterion Selection (Floating Bar, Sidebar Group, Dropdown)
+    const floatingPills = document.querySelectorAll('#criterion-btn-group .mode-pill');
+    floatingPills.forEach((pill) => {
       pill.addEventListener('click', (e) => {
-        criterionPills.forEach((p) => p.classList.remove('active'));
         const target = e.currentTarget as HTMLElement;
-        target.classList.add('active');
         const criterion = (target.getAttribute('data-criterion') || 'score_global') as MapDisplayCriterion;
-        this.currentFilters.displayCriterion = criterion;
-        this.updateLegendDisplay(criterion);
-        this.updateRankingHeader(criterion);
-        this.listeners.onFiltersChanged(this.currentFilters);
+        this.setDisplayCriterion(criterion);
       });
+    });
+
+    const sidebarPills = document.querySelectorAll('#sidebar-criterion-btn-group .pill-btn');
+    sidebarPills.forEach((pill) => {
+      pill.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const criterion = (target.getAttribute('data-criterion') || 'score_global') as MapDisplayCriterion;
+        this.setDisplayCriterion(criterion);
+      });
+    });
+
+    const selectCriterionDropdown = document.getElementById('select-map-criterion') as HTMLSelectElement;
+    selectCriterionDropdown?.addEventListener('change', () => {
+      const criterion = (selectCriterionDropdown.value || 'score_global') as MapDisplayCriterion;
+      this.setDisplayCriterion(criterion);
+    });
+
+    // 15b. Horizontal Scroll Arrows & Mouse Wheel on Floating Bar
+    const modeViewport = document.getElementById('mode-scroll-viewport');
+    const btnScrollLeft = document.getElementById('btn-mode-scroll-left');
+    const btnScrollRight = document.getElementById('btn-mode-scroll-right');
+
+    const updateModeScrollButtons = () => {
+      if (!modeViewport) return;
+      const scrollLeft = modeViewport.scrollLeft;
+      const maxScroll = modeViewport.scrollWidth - modeViewport.clientWidth;
+      if (btnScrollLeft) {
+        btnScrollLeft.classList.toggle('visible', scrollLeft > 8);
+      }
+      if (btnScrollRight) {
+        btnScrollRight.classList.toggle('visible', scrollLeft < maxScroll - 8);
+      }
+    };
+
+    modeViewport?.addEventListener('scroll', updateModeScrollButtons, { passive: true });
+    window.addEventListener('resize', updateModeScrollButtons);
+    setTimeout(updateModeScrollButtons, 300);
+
+    btnScrollLeft?.addEventListener('click', () => {
+      modeViewport?.scrollBy({ left: -240, behavior: 'smooth' });
+    });
+    btnScrollRight?.addEventListener('click', () => {
+      modeViewport?.scrollBy({ left: 240, behavior: 'smooth' });
+    });
+
+    // Convert mouse wheel vertically to horizontal scroll on floating bar
+    modeViewport?.addEventListener('wheel', (e: WheelEvent) => {
+      if (e.deltaY !== 0 && modeViewport.scrollWidth > modeViewport.clientWidth) {
+        e.preventDefault();
+        modeViewport.scrollLeft += e.deltaY;
+        updateModeScrollButtons();
+      }
+    }, { passive: false });
+
+    // Drag-to-scroll support for mouse users
+    let isDragging = false;
+    let startX = 0;
+    let initialScrollLeft = 0;
+
+    modeViewport?.addEventListener('mousedown', (e: MouseEvent) => {
+      if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+      isDragging = true;
+      startX = e.pageX - modeViewport.offsetLeft;
+      initialScrollLeft = modeViewport.scrollLeft;
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    modeViewport?.addEventListener('mousemove', (e: MouseEvent) => {
+      if (!isDragging || !modeViewport) return;
+      e.preventDefault();
+      const x = e.pageX - modeViewport.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      modeViewport.scrollLeft = initialScrollLeft - walk;
     });
 
     // 16. Recenter IDF Button
@@ -761,6 +828,40 @@ export class UIManager {
       panel.classList.toggle('active', isActive);
       // Panel scroll position is intentionally preserved when switching/viewing
     });
+  }
+
+  public setDisplayCriterion(criterion: MapDisplayCriterion): void {
+    this.currentFilters.displayCriterion = criterion;
+
+    // 1. Synchronize floating bar pills
+    const floatingPills = document.querySelectorAll('#criterion-btn-group .mode-pill');
+    floatingPills.forEach((p) => {
+      p.classList.toggle('active', p.getAttribute('data-criterion') === criterion);
+    });
+
+    // 2. Synchronize sidebar pills
+    const sidebarPills = document.querySelectorAll('#sidebar-criterion-btn-group .pill-btn');
+    sidebarPills.forEach((p) => {
+      p.classList.toggle('active', p.getAttribute('data-criterion') === criterion);
+    });
+
+    // 3. Synchronize select dropdown
+    const selectDropdown = document.getElementById('select-map-criterion') as HTMLSelectElement;
+    if (selectDropdown && selectDropdown.value !== criterion) {
+      selectDropdown.value = criterion;
+    }
+
+    // 4. Synchronize sidebar active badge
+    const badge = document.getElementById('active-criterion-badge');
+    if (badge) {
+      const activeBtn = document.querySelector(`#criterion-btn-group .mode-pill[data-criterion="${criterion}"]`);
+      if (activeBtn) badge.textContent = activeBtn.textContent?.trim() || criterion;
+    }
+
+    // 5. Update legend & ranking headers and trigger map filter updates
+    this.updateLegendDisplay(criterion);
+    this.updateRankingHeader(criterion);
+    this.listeners.onFiltersChanged(this.currentFilters);
   }
 
   public openSidebar(): void {

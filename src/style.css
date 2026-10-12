@@ -979,42 +979,50 @@ html, body {
 
 /* ==========================================================================
    Map Floating Bar (Criterion Selector)
-   Strictly positioned outside the sidebar to eliminate any visual overlap
+   Strictly positioned outside the sidebar with smooth horizontal scrolling & arrows
    ========================================================================== */
+
+/* Position MapLibre Navigation controls safely below top floating bar */
+.maplibregl-ctrl-top-right {
+  top: 60px !important;
+  right: 14px !important;
+  margin: 0 !important;
+}
 
 .map-floating-bar {
   position: absolute;
   top: 14px;
-  left: calc(var(--sidebar-width) + 36px);
+  left: calc(var(--sidebar-width) + 24px);
   right: auto;
   transform: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px;
+  padding: 5px 10px 5px 14px;
   border-radius: var(--radius-full);
   background: rgba(15, 23, 42, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.55);
   z-index: 15;
   white-space: nowrap;
-  max-width: calc(100vw - var(--sidebar-width) - 60px);
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  max-width: calc(100vw - var(--sidebar-width) - 40px);
+  overflow: hidden;
   transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1), max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.map-floating-bar::-webkit-scrollbar {
-  display: none;
 }
 
 #map-container.sidebar-collapsed .map-floating-bar,
 #main-content:has(#sidebar.collapsed) .map-floating-bar {
   left: 20px;
   max-width: calc(100vw - 40px);
+}
+
+.mode-bar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .mode-bar-label {
@@ -1024,6 +1032,74 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   flex-shrink: 0;
+}
+
+.mode-select-dropdown {
+  display: none;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+}
+
+.mode-select-dropdown option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.mode-scroll-viewport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+  padding: 2px 2px;
+  cursor: grab;
+  user-select: none;
+}
+
+.mode-scroll-viewport:active {
+  cursor: grabbing;
+}
+
+.mode-scroll-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.mode-scroll-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.mode-scroll-btn.visible {
+  display: flex;
+}
+
+.mode-scroll-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  transform: scale(1.12);
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
 }
 
 .mode-pills-row {
