@@ -69,6 +69,18 @@ export class MapManager {
       this.setupInteractions(onZoneClick);
       onLoadComplete();
     });
+
+    // Auto-resize MapLibre on viewport changes and device rotation
+    window.addEventListener('resize', () => {
+      this.map.resize();
+    });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => this.map.resize(), 200);
+    });
+  }
+
+  public resize(): void {
+    this.map.resize();
   }
 
   private initLayers(): void {
@@ -539,16 +551,33 @@ export class MapManager {
     this.currentRadiusKm = radius;
   }
 
+  private getResponsiveMapPadding(): { top: number; bottom: number; left: number; right: number } {
+    const width = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const isMobile = width <= 768;
+    const isTablet = width > 768 && width <= 1024;
+    const sidebar = typeof document !== 'undefined' ? document.getElementById('sidebar') : null;
+    const isSidebarOpen = sidebar && !sidebar.classList.contains('collapsed');
+
+    if (isMobile) {
+      return { top: 60, bottom: 30, left: 20, right: 20 };
+    }
+    if (isTablet) {
+      const leftPad = isSidebarOpen ? Math.min(380, width * 0.42) : 24;
+      return { top: 60, bottom: 30, left: leftPad, right: 24 };
+    }
+    // Desktop
+    const leftPad = isSidebarOpen ? 465 : 30;
+    return { top: 60, bottom: 40, left: leftPad, right: 30 };
+  }
+
   public fitIDFBounds(animated: boolean = true): void {
-    const isSidebarOpen = !document.getElementById('sidebar')?.classList.contains('collapsed');
-    const leftPad = isSidebarOpen ? 470 : 30;
     this.map.fitBounds(
       [
         [1.44, 48.12], // Southwest (Essonne / Seine-et-Marne / Yvelines)
         [3.52, 49.23], // Northeast (Val-d'Oise / Seine-et-Marne)
       ],
       {
-        padding: { top: 60, bottom: 40, left: leftPad, right: 30 },
+        padding: this.getResponsiveMapPadding(),
         duration: animated ? 900 : 0,
         essential: true,
       }
@@ -580,10 +609,8 @@ export class MapManager {
       };
 
       if (deptBounds[dept]) {
-        const isSidebarOpen = !document.getElementById('sidebar')?.classList.contains('collapsed');
-        const leftPad = isSidebarOpen ? 470 : 30;
         this.map.fitBounds(deptBounds[dept], {
-          padding: { top: 60, bottom: 40, left: leftPad, right: 30 },
+          padding: this.getResponsiveMapPadding(),
           duration: 900,
           essential: true,
         });

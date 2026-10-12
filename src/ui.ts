@@ -223,13 +223,67 @@ export class UIManager {
       this.listeners.onFiltersChanged(this.currentFilters);
     });
 
-    // 13. Sidebar Toggle Button
+    // 13. Responsive Sidebar Drawer & Backdrop Handlers
     const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
-    const sidebar = document.getElementById('sidebar');
-    const mapContainer = document.getElementById('map-container');
+    const btnCloseSidebar = document.getElementById('btn-close-sidebar');
+    const btnMobileOpenSidebar = document.getElementById('btn-mobile-open-sidebar');
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
     btnToggleSidebar?.addEventListener('click', () => {
-      sidebar?.classList.toggle('collapsed');
-      mapContainer?.classList.toggle('sidebar-collapsed');
+      this.toggleSidebar();
+    });
+    btnCloseSidebar?.addEventListener('click', () => {
+      this.closeSidebar();
+    });
+    btnMobileOpenSidebar?.addEventListener('click', () => {
+      this.openSidebar();
+    });
+    sidebarBackdrop?.addEventListener('click', () => {
+      this.closeSidebar();
+    });
+
+    // 13b. Map Legend Collapsible Toggle (essential for mobile viewports)
+    const btnToggleLegend = document.getElementById('btn-toggle-legend');
+    const legendHeader = document.getElementById('legend-header-toggle');
+    const mapLegend = document.getElementById('map-legend');
+
+    const toggleLegendCollapsed = () => {
+      mapLegend?.classList.toggle('legend-collapsed');
+    };
+    btnToggleLegend?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleLegendCollapsed();
+    });
+    legendHeader?.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        toggleLegendCollapsed();
+      }
+    });
+
+    // Initial responsive setup
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      this.closeSidebar();
+      mapLegend?.classList.add('legend-collapsed');
+    }
+
+    // Dynamic viewport transition handler
+    window.addEventListener('resize', () => {
+      const isMobile = window.innerWidth <= 768;
+      const sidebar = document.getElementById('sidebar');
+      const isCollapsed = sidebar?.classList.contains('collapsed');
+
+      if (!isMobile) {
+        sidebarBackdrop?.classList.add('hidden');
+        btnMobileOpenSidebar?.classList.add('hidden');
+      } else {
+        if (!isCollapsed) {
+          sidebarBackdrop?.classList.remove('hidden');
+          btnMobileOpenSidebar?.classList.add('hidden');
+        } else {
+          sidebarBackdrop?.classList.add('hidden');
+          btnMobileOpenSidebar?.classList.remove('hidden');
+        }
+      }
     });
 
     // 14. Methodology Modal
@@ -707,6 +761,45 @@ export class UIManager {
       panel.classList.toggle('active', isActive);
       // Panel scroll position is intentionally preserved when switching/viewing
     });
+  }
+
+  public openSidebar(): void {
+    const sidebar = document.getElementById('sidebar');
+    const mapContainer = document.getElementById('map-container');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const btnMobileOpen = document.getElementById('btn-mobile-open-sidebar');
+
+    sidebar?.classList.remove('collapsed');
+    mapContainer?.classList.remove('sidebar-collapsed');
+
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      backdrop?.classList.remove('hidden');
+      btnMobileOpen?.classList.add('hidden');
+    }
+  }
+
+  public closeSidebar(): void {
+    const sidebar = document.getElementById('sidebar');
+    const mapContainer = document.getElementById('map-container');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const btnMobileOpen = document.getElementById('btn-mobile-open-sidebar');
+
+    sidebar?.classList.add('collapsed');
+    mapContainer?.classList.add('sidebar-collapsed');
+    backdrop?.classList.add('hidden');
+
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      btnMobileOpen?.classList.remove('hidden');
+    }
+  }
+
+  public toggleSidebar(): void {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar?.classList.contains('collapsed')) {
+      this.openSidebar();
+    } else {
+      this.closeSidebar();
+    }
   }
 
   private updateSliderGauge(slider: HTMLInputElement | null, color: string): void {
@@ -1536,6 +1629,9 @@ export class UIManager {
 
     if (autoSwitchTab) {
       this.switchTab('detail');
+      if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+        this.openSidebar();
+      }
     }
 
     // Restore scroll position so user stays exactly at the same section when chaining communes
