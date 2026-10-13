@@ -145,11 +145,15 @@ class App {
     // Update map choropleth data
     this.mapManager.updateZonesData(this.zonesGeoJSON);
 
-    // Count excluded zones
+    // Count excluded zones (total and specific to population threshold)
     const excludedCount = this.zonesGeoJSON.features.filter(
       (f) => f.properties.is_excluded
     ).length;
-    this.uiManager.updateExcludedCount(excludedCount);
+    const minPop = this.currentFilters.minPopulation || 0;
+    const popExcludedCount = minPop > 0
+      ? this.zonesGeoJSON.features.filter((f) => (f.properties.pop_totale || 0) < minPop).length
+      : 0;
+    this.uiManager.updateExcludedCount(excludedCount, popExcludedCount);
 
     // Update Top 10 list
     const top10 = getTop10Zones(

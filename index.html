@@ -283,6 +283,17 @@
 
         <!-- Tab 1: Paramètres / Sliders & Filtres -->
         <section id="panel-controls" class="tab-panel active">
+          <!-- Active Exclusions Warning & One-Click Reset Banner -->
+          <div id="filter-active-banner" class="filter-status-banner hidden">
+            <div class="filter-status-content">
+              <span class="filter-status-icon">⚠️</span>
+              <span id="filter-status-text"><strong>0 commune filtrée</strong></span>
+            </div>
+            <button id="btn-reset-all-filters" class="btn-reset-filters" type="button" title="Réinitialiser tous les filtres pour réafficher 100% des communes">
+              🔄 Réinitialiser tous les filtres (Afficher 100% des communes)
+            </button>
+          </div>
+
           <!-- Strategy Presets (Profils d'Installation) -->
           <div class="control-group preset-group">
             <div class="control-header">
@@ -416,7 +427,7 @@
               <span class="toggle-label">🛡️ Déserts podologiques stricts uniquement (0 cabinet)</span>
             </label>
 
-            <p class="control-hint">Filtre strict selon le critère métier : isole les communes en sous-densité médicale et élimine les secteurs sur-dotés.</p>
+            <p class="control-hint">Filtre strict : isole les 763 communes sans aucun cabinet communal (0 podologue) et grise les 522 communes dotées.</p>
           </div>
 
           <!-- Max Competition in Radius Filter -->
@@ -554,9 +565,9 @@
             </div>
             <input type="range" id="slider-min-pop" min="0" max="20000" step="500" value="0" class="slider-input" />
             <div class="control-subtext">
-              <span id="excluded-count-label">0 communes exclues</span>
+              <span id="excluded-count-label">0 commune exclue par la population (toutes tailles incluses)</span>
             </div>
-            <p class="control-hint">Permet d'inclure les communes rurales et bourgs (ex: Seine-et-Marne 77) qui drainent la patientèle des petits villages alentours.</p>
+            <p class="control-hint">Permet de filtrer par taille minimale ou d'inclure toutes les communes rurales et bourgs (ex: Seine-et-Marne 77).</p>
           </div>
 
           <!-- Public Transit Access & Travel Time Filters -->

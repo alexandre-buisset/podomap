@@ -551,6 +551,12 @@ export class UIManager {
     btnPrintDossier?.addEventListener('click', () => {
       window.print();
     });
+
+    // 22. Reset All Filters Button
+    const btnResetAll = document.getElementById('btn-reset-all-filters');
+    btnResetAll?.addEventListener('click', () => {
+      this.resetAllFilters();
+    });
   }
 
   public applyPreset(preset: StrategyPreset): void {
@@ -602,6 +608,11 @@ export class UIManager {
       // This immediately excludes Paris (20 to 60 podologues per arrondissement) and saturated cities!
       this.currentFilters.maxConcurrencePodos = 2; // Maximum 2 confrères à 2km (0, 1 ou 2 podologues)
       this.currentFilters.onlyDesertPodo = false;
+      const maxConcBtns = document.querySelectorAll('#max-conc-btn-group .pill-btn');
+      maxConcBtns.forEach((b) => b.classList.toggle('active', b.getAttribute('data-max-conc') === '2'));
+      const lblConc = document.getElementById('max-conc-val-label');
+      if (lblConc) lblConc.textContent = '≤ 2 à 2km';
+
       this.currentFilters.weights = {
         pouvoir_achat_semelles: 10,
         concurrence_inv: 65,
@@ -632,6 +643,10 @@ export class UIManager {
       this.currentFilters.requireTransitStation = true;
       const toggleStation = document.getElementById('toggle-require-station') as HTMLInputElement;
       if (toggleStation) toggleStation.checked = true;
+      const transitPills = document.querySelectorAll('#transit-time-btn-group .pill-btn');
+      transitPills.forEach((p) => p.classList.toggle('active', p.getAttribute('data-transit-time') === '25'));
+      const lblTransit = document.getElementById('val-transit-time-label');
+      if (lblTransit) lblTransit.textContent = '< 25 min';
       setCriterionPill('transports');
     } else if (type === 'seniors') {
       this.currentFilters.weights = {
@@ -677,10 +692,21 @@ export class UIManager {
     this.currentFilters.requireTransitStation = false;
     const toggleStation = document.getElementById('toggle-require-station') as HTMLInputElement;
     if (toggleStation) toggleStation.checked = false;
+
+    const maxConcBtns = document.querySelectorAll('#max-conc-btn-group .pill-btn');
+    maxConcBtns.forEach((b) => b.classList.toggle('active', b.getAttribute('data-max-conc') === '-1'));
+    const lblConc = document.getElementById('max-conc-val-label');
+    if (lblConc) lblConc.textContent = 'Sans limite';
+
+    const transitPills = document.querySelectorAll('#transit-time-btn-group .pill-btn');
+    transitPills.forEach((p) => p.classList.toggle('active', p.getAttribute('data-transit-time') === '0'));
+    const lblTransit = document.getElementById('val-transit-time-label');
+    if (lblTransit) lblTransit.textContent = 'Tous';
+
     this.applyPreset('semelles');
     const setCriterionPill = (crit: MapDisplayCriterion) => {
       this.currentFilters.displayCriterion = crit;
-      const criterionPills = document.querySelectorAll('#criterion-btn-group .mode-pill');
+      const criterionPills = document.querySelectorAll('#criterion-btn-group .mode-pill, #sidebar-criterion-btn-group .pill-btn');
       criterionPills.forEach((p) => {
         p.classList.toggle('active', p.getAttribute('data-criterion') === crit);
       });
@@ -688,6 +714,80 @@ export class UIManager {
       this.updateRankingHeader(crit);
     };
     setCriterionPill('score_global');
+  }
+
+  public resetAllFilters(): void {
+    // 1. Reset Population
+    this.currentFilters.minPopulation = 0;
+    const sliderMinPop = document.getElementById('slider-min-pop') as HTMLInputElement;
+    if (sliderMinPop) {
+      sliderMinPop.value = '0';
+      this.updateSliderGauge(sliderMinPop, '#06b6d4');
+    }
+    const valMinPop = document.getElementById('val-min-pop');
+    if (valMinPop) valMinPop.textContent = 'Tous (Sans seuil)';
+
+    // 2. Reset Ratio / Desert
+    this.currentFilters.minRatioHabPodo = 'all';
+    this.currentFilters.minRatioHabPodoNum = 0;
+    this.currentFilters.onlyDesertPodo = false;
+    const ratioHabBtns = document.querySelectorAll('#ratio-hab-btn-group .pill-btn');
+    ratioHabBtns.forEach((b) => b.classList.toggle('active', b.getAttribute('data-ratio-hab') === 'all'));
+    const sliderRatioHab = document.getElementById('slider-ratio-hab') as HTMLInputElement;
+    if (sliderRatioHab) {
+      sliderRatioHab.value = '0';
+      this.updateSliderGauge(sliderRatioHab, '#10b981');
+    }
+    const valRatioHabSlider = document.getElementById('val-ratio-hab-slider');
+    if (valRatioHabSlider) valRatioHabSlider.textContent = 'Sans seuil';
+    const ratioValLabel = document.getElementById('ratio-hab-val-label');
+    if (ratioValLabel) ratioValLabel.textContent = 'Tous';
+    const toggleDesert = document.getElementById('toggle-only-desert') as HTMLInputElement;
+    if (toggleDesert) toggleDesert.checked = false;
+
+    // 3. Reset Competition ceiling
+    this.currentFilters.maxConcurrencePodos = -1;
+    const maxConcBtns = document.querySelectorAll('#max-conc-btn-group .pill-btn');
+    maxConcBtns.forEach((b) => b.classList.toggle('active', b.getAttribute('data-max-conc') === '-1'));
+    const maxConcLabel = document.getElementById('max-conc-val-label');
+    if (maxConcLabel) maxConcLabel.textContent = 'Sans limite';
+
+    // 4. Reset Department
+    this.currentFilters.selectedDepartment = 'all';
+    const deptPills = document.querySelectorAll('#dept-filter-group .pill-btn');
+    deptPills.forEach((p) => p.classList.toggle('active', p.getAttribute('data-dept') === 'all'));
+
+    // 5. Reset Transports
+    this.currentFilters.maxTransitTimeParis = 0;
+    this.currentFilters.requireTransitStation = false;
+    const transitPills = document.querySelectorAll('#transit-time-btn-group .pill-btn');
+    transitPills.forEach((p) => p.classList.toggle('active', p.getAttribute('data-transit-time') === '0'));
+    const valTransitLabel = document.getElementById('val-transit-time-label');
+    if (valTransitLabel) valTransitLabel.textContent = 'Tous';
+    const toggleStation = document.getElementById('toggle-require-station') as HTMLInputElement;
+    if (toggleStation) toggleStation.checked = false;
+
+    // 6. Reset Smart Chips
+    const smartChips = document.querySelectorAll('#smart-chips-group .smart-chip');
+    smartChips.forEach((c) => c.classList.remove('active'));
+
+    // 7. Reset display criterion to score global
+    const setCriterionPill = (crit: MapDisplayCriterion) => {
+      this.currentFilters.displayCriterion = crit;
+      const criterionPills = document.querySelectorAll('#criterion-btn-group .mode-pill, #sidebar-criterion-btn-group .pill-btn');
+      criterionPills.forEach((p) => {
+        p.classList.toggle('active', p.getAttribute('data-criterion') === crit);
+      });
+      this.updateLegendDisplay(crit);
+      this.updateRankingHeader(crit);
+    };
+    setCriterionPill('score_global');
+
+    // 8. Reset Preset to semelles
+    this.applyPreset('semelles');
+
+    // 9. Trigger re-calculation
+    this.listeners.onFiltersChanged(this.currentFilters);
   }
 
   public initSearch(
@@ -1084,10 +1184,30 @@ export class UIManager {
     }
   }
 
-  public updateExcludedCount(count: number): void {
+  public updateExcludedCount(count: number, popExcludedCount?: number): void {
     const label = document.getElementById('excluded-count-label');
+    const minPop = this.currentFilters.minPopulation || 0;
     if (label) {
-      label.textContent = `${count} zone${count > 1 ? 's' : ''} exclue${count > 1 ? 's' : ''} (< seuil minimal)`;
+      if (minPop > 0) {
+        const popCount = popExcludedCount !== undefined ? popExcludedCount : count;
+        label.textContent = `${popCount} commune${popCount > 1 ? 's' : ''} exclue${popCount > 1 ? 's' : ''} (< ${minPop.toLocaleString('fr-FR')} hab.)`;
+        label.style.color = '#f59e0b';
+      } else {
+        label.textContent = '0 commune exclue par la population (toutes tailles incluses)';
+        label.style.color = 'var(--text-muted)';
+      }
+    }
+
+    // Active filters banner at the top of parameters
+    const banner = document.getElementById('filter-active-banner');
+    const bannerText = document.getElementById('filter-status-text');
+    if (banner && bannerText) {
+      if (count > 0) {
+        banner.classList.remove('hidden');
+        bannerText.innerHTML = `<strong>${count} commune${count > 1 ? 's' : ''} filtrée${count > 1 ? 's' : ''} (grisée${count > 1 ? 's' : ''})</strong> par vos filtres actifs`;
+      } else {
+        banner.classList.add('hidden');
+      }
     }
   }
 
